@@ -26,114 +26,60 @@ from PyQt5.QtWidgets import QApplication, QMessageBox
 
 from qgis.core import QgsProject, QgsWkbTypes, QgsFeatureRequest, QgsRectangle
 from qgis.gui import QgsMapToolEmitPoint, QgsMapToolEdit, QgsRubberBand, QgsMapCanvasSnappingUtils
-from .common import getLayerByName
+import common
 
-class PointMapTool(QgsMapToolEmitPoint):
-    
-    canvasClicked = pyqtSignal('QgsPointXY', str)
-    
-    def __init__(self, canvas):
-        QgsMapToolEmitPoint.__init__(self,canvas)
-        self.canvas = canvas
-                
-    def canvasReleaseEvent(self, event):
-        # Get the click and emit the point in source crs
-        crs = self.canvas.mapSettings().destinationCrs().authid()
-        self.canvasClicked.emit(event.mapPoint(),crs)
-    
-    def isZoomTool(self):
-        return False
-    
-    def isTransient(self):
-        return False
-      
-    def isEditTool(self):
-        return False
 
-class MovePointMapTool(QgsMapToolEdit):
-    
-    pointMoved = pyqtSignal('QgsFeatureId', 'QgsPointXY', str)
-    
-    def __init__(self, iface, canvas, sourceLayerName, snapLayer):
-        QgsMapToolEdit.__init__(self,canvas)
-        self.setCursor(Qt.CrossCursor)
-        self.iface = iface
-        self.canvas = canvas
-        self.rubberBand = self.createRubberBand(QgsWkbTypes.PointGeometry)
-        self.rubberBand.setIcon(QgsRubberBand.IconType.ICON_FULL_BOX)
-        self.snapper = QgsMapCanvasSnappingUtils(self.canvas)
-        self.sourceLayerName = sourceLayerName
-        self.sourceLayer = None
-        self.snapLayer = snapLayer
-        self.startID = None
-        self.crs = ''
-        self.isMoving = False
-        self.reset()
-
-    def reset(self):
-        self.startID = self.endPoint = None
-        self.isMoving = False
-        self.rubberBand.reset(True)
-                
-    def canvasMoveEvent(self, event):
-        # TODO: Enable snapping to snapLayer only
-        if not self.isMoving:
-            return
-
-        self.endPoint = event.mapPoint()
-        self.showPoint(self.endPoint)
-
-    def canvasReleaseEvent(self, event):
-        if self.isMoving:
-            self.isMoving = False
-            # Get the click and emit the start/end points in source crs
-            self.pointMoved.emit(self.startID, event.mapPoint(), self.crs)
-            self.reset()
-        else:
-            # TODO: Enable snapping to sourceLayer only
-            if self.sourceLayer == None:
-                self.sourceLayer = getLayerByName(self.iface, QgsProject.instance(), self.sourceLayerName)
-                if self.sourceLayer == None:
-                    self.deactivate()
-                                
-            if self.sourceLayer != None:
-                self.crs = self.sourceLayer.crs().authid()
-                point = event.mapPoint()
-                request = QgsFeatureRequest(QgsRectangle(point.x()-1,point.y()-1, point.x()+1, point.y()+1))
-                # Get ID of first feature
-                for pt in self.sourceLayer.getFeatures(request):
-                    self.startID = pt.id()
-                    break
-
-                if self.startID != None:
-                    self.isMoving = True
-    
-    def showPoint(self, point):
-        self.rubberBand.reset(QgsWkbTypes.PointGeometry)
-        self.rubberBand.addPoint(point, True)
-        self.rubberBand.show()
-
-    def isZoomTool(self):
-        return False
-    
-    def isTransient(self):
-        return False
-      
-    def isEditTool(self):
-        return True
-
-class SelectCPTool(QgsMapToolEmitPoint):
+class SelectDCpolyTool(QgsMapToolEmitPoint):
         
     dpSelected = pyqtSignal('QgsFeatureId', list)
     
     def __init__(self, iface, canvas):
         QgsMapToolEmitPoint.__init__(self, canvas)
+
+        """ The user should already have a pole object selected. Ensure 
+        this is the case and then send the geometry to the main 
+        function. """
+
+        self.iface = iface
+        self.canvas = canvas
+        print ('ere')
+        layers = common.prerequisites['layers']
+        poleLyrname = layers['Poles']['name']
+        poleLyr = common.getLayerByName(self.iface, QgsProject.instance(), poleLyrname, True)
+        if poleLyr == None: return
+        
+        selectedLyr = self.iface.mapCanvas().currentLayer()
+
+        if selectedLyr == None:
+            errMsg = "You must select a Pole from the " + poleLyrname + " layer."
+            errTitle = 'Wrong layer selected: ' + selectedLyr.name()
+            QMessageBox.critical(self.iface.mainWindow(), errTitle, errMsg)
+            self.iface.setActiveLayer(poleLyr)
+            return
+
+        if selectedLyr.name() != poleLyrname:
+            errMsg = "You must select a Pole from the " + poleLyrname + " layer."
+            errTitle = 'Wrong layer selected: ' + selectedLyr.name()
+            QMessageBox.critical(self.iface.mainWindow(), errTitle, errMsg)
+            self.iface.setActiveLayer(poleLyr)
+            return
+
+        if selectedLyr.selectedFeatureCount() > 1:
+            errMsg = "You must select a single Pole from the " + poleLyrname + " layer."
+            errTitle = "Multiple polygons selected"
+            QMessageBox.critical(self.iface.mainWindow(), errTitle, errMsg)
+            self.iface.setActiveLayer(poleLyr)
+            return
+
         self.setCursor(Qt.CrossCursor)
         self.iface = iface
         self.canvas = canvas
         # self.snapper = QgsMapCanvasSnappingUtils(self.canvas)
+        self.bdryLayerName = common.prerequisites['layers']['Boundaries']['name']
         self.bdryLayer = None
+        self.dpLayerName = common.prerequisites['layers']['DistributionPoints']['name']
         self.dpLayer = None
+        self.dpFields = common.prerequisites['layers']['DistributionPoints']['fields']
         self.bdrySelected = False
         self.bdryId = -1
         self.crs = ''
@@ -150,7 +96,7 @@ class SelectCPTool(QgsMapToolEmitPoint):
             
             # Get the click and check they clicked on a DP
             if self.dpLayer == None:
-                self.dpLayer = getLayerByName(self.iface, QgsProject.instance(), 'DistributionPoints')
+                self.dpLayer = common.getLayerByName(self.iface, QgsProject.instance(), self.dpLayerName)
                 if self.dpLayer != None:
                     self.crs = self.dpLayer.crs().authid()
                 else:
@@ -161,7 +107,7 @@ class SelectCPTool(QgsMapToolEmitPoint):
             # Get name of DP features by concatenating Cabinet-FibreIndex.Branch.PFDPId
             dpNames = []
             for dp in self.dpLayer.getFeatures(request):
-                dpNames.append('{}-{}.{}.{}'.format(dp['Cabinet'], dp['Fibre Inde'], dp['Branch'], dp['PFDP ID']))
+                dpNames.append('{}-{}.{}.{}'.format(dp[self.dpFields['Cabinet']], dp[self.dpFields['FibreIndex']], dp[self.dpFields['Branch']], dp[self.dpFields['PFDPId']]))
 
             if len(dpNames) > 0:                
                 self.dpSelected.emit(self.bdryId, dpNames)
@@ -170,7 +116,7 @@ class SelectCPTool(QgsMapToolEmitPoint):
             self.reset()
         else:
             if self.bdryLayer == None:
-                self.bdryLayer = getLayerByName(self.iface, QgsProject.instance(), 'Boundaries')
+                self.bdryLayer = common.getLayerByName(self.iface, QgsProject.instance(), self.bdryLayerName)
                 if self.bdryLayer == None:
                     self.deactivate()
 
@@ -191,45 +137,3 @@ class SelectCPTool(QgsMapToolEmitPoint):
       
     def isEditTool(self):
         return False
-
-class FreehandPolygonMapTool(QgsMapToolEdit):
-    
-    polyCompleted = pyqtSignal('QgsGeometry')
-
-    def __init__(self, canvas):
-        QgsMapToolEdit.__init__(self,canvas)
-        self.canvas = canvas
-        self.rubberBand = self.createRubberBand(QgsWkbTypes.PolygonGeometry)
-        self.rubberBand.setColor(QColor(255, 0, 0, 50))
-    
-    def reset(self):
-        self.rubberBand.reset(QgsWkbTypes.PolygonGeometry)
-
-    def activate(self):
-        self.reset()
-        
-    def deactivate(self):
-        self.reset()
-        
-    def canvasMoveEvent(self, event):
-        self.rubberBand.movePoint(event.mapPoint())
-        
-    def canvasReleaseEvent(self, event):
-        if event.button() == Qt.LeftButton:
-            """ Add a new point to the rubber band """
-            self.rubberBand.addPoint(event.mapPoint())
-        
-        elif event.button() == Qt.RightButton:
-            """ Send back the geometry to the calling class """
-            self.polyCompleted.emit(self.rubberBand.asGeometry())
-            self.reset()
-        
-    def isZoomTool(self):
-        return False
-    
-    def isTransient(self):
-        return False
-      
-    def isEditTool(self):
-        return False
-

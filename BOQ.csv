@@ -1,0 +1,21 @@
+Item,Quantity
+Premises FED total,456
+BT Cabinets,0
+Nodes,
+5,3
+1,1
+2,6
+3,28
+7,13
+4,9
+BT Pole,
+2,25
+1,13
+3,6
+BT Duct,
+TRENCH,90
+CONDUIT,1
+NULL,5
+BT Chambers,
+JOINTING CHAMBER,38
+NULL,4

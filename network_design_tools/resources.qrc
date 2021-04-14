@@ -4,5 +4,7 @@
         <file>icons/houses.png</file>
         <file>icons/house.png</file>
         <file>icons/table_view.png</file>
+        <file>icons/graphics-tablet.png</file>
+        <file>icons/node_add.png</file>
     </qresource>
 </RCC>

@@ -28,6 +28,80 @@
                 "Count": "NumProp"
             }
         },
+        "BillofQuantities": {
+            "name": "BillofQuantities",
+            "source": "D:/Development/NetworkDesignTools_Feb21/BOQ.csv",
+            "stats": {
+                    "Stat0": {
+                        "Title": "Premises FED total",
+                        "Layer": "Customer Premises",
+                        "Field": "",
+                        "SummaryType": "Count"  
+                    },
+
+                    "Stat1": {
+                        "Title": "BT Cabinets",
+                        "Layer": "BT Cabinet",
+                        "Field": "",
+                        "SummaryType": "Count"  
+                    },
+                
+                    "Stat2": {
+                        "Title": "Nodes",
+                        "Layer": "Nodes",
+                        "Field": "Use",
+                        "SummaryType": "Count",
+                        "LUT":"{ “map”: { 1: “one”, 2: “two”, 3: “three” } } "
+                    },
+                
+                    "Stat3": {
+                        "Title": "BT Pole",
+                        "Layer": "BT Pole",
+                        "Field": "Use",
+                        "SummaryType": "Count"  
+                    },
+                
+                    "Stat4": {
+                        "Title": "BT Duct",
+                        "Layer": "BT Duct",
+                        "Field": "Type_Name",
+                        "SummaryType": "Count"  
+                    },
+                
+                    "Stat5": {
+                        "Title": "BT Chambers",
+                        "Layer": "BT Chambers",
+                        "Field": "Category_N",
+                        "SummaryType": "Count"  
+                    }
+                }
+            },
+        "Poles": {
+            "name": "BT Pole",
+            "source": "./Layers/Poles.shp",
+            "fields": {
+                "Surface": "Surface",
+                "Type": "Type",
+                "Y": "Y",
+                "X": "X",
+                "Use": "Use",
+                "Owner": "Owner",
+                "ORPointType": "CP/DP/JP",
+                "ID": "ID",
+                "Comments": "Comments",
+                "TestDate": "Test Date",
+                "A1024": "A1024",
+                "ExistWire": "exist_wire",
+                "Capping": "capping",
+                "TestHazards": "hazards",
+                "Age": "age",
+                "Wayleave": "Wayleave",
+                "Comment": "Comment",
+                "BTId": "BT_ID",
+                "TreeTrim": "Tree_Trim",
+                "JointUser": "Joint_User"
+            }
+        },       
          "Cabinet": {
              "name": "Cabinet",
              "source": "./Layers/Cabinet.shp",
@@ -225,32 +299,6 @@
                  "Homes": "Homes",
                  "Address": "Address",
                  "Name": "Name"
-             }
-         },
-         "Poles": {
-             "name": "Poles",
-             "source": "./Layers/Poles.shp",
-             "fields": {
-                 "Surface": "Surface",
-                 "Type": "Type",
-                 "Y": "Y",
-                 "X": "X",
-                 "Use": "Use",
-                 "Owner": "Owner",
-                 "ORPointType": "CP/DP/JP",
-                 "ID": "ID",
-                 "Comments": "Comments",
-                 "TestDate": "Test Date",
-                 "A1024": "A1024",
-                 "ExistWire": "exist_wire",
-                 "Capping": "capping",
-                 "TestHazards": "hazards",
-                 "Age": "age",
-                 "Wayleave": "Wayleave",
-                 "Comment": "Comment",
-                 "BTId": "BT_ID",
-                 "TreeTrim": "Tree_Trim",
-                 "JointUser": "Joint_User"
              }
          },
          "RAGStatus": {

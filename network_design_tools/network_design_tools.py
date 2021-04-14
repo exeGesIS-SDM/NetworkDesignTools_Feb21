@@ -26,19 +26,19 @@ import os.path
 sys.path.append(os.path.dirname(__file__))
 
 from qgis.PyQt.QtCore import Qt, QSettings, QTranslator, QCoreApplication, QVariant
-from qgis.PyQt.QtGui import QIcon 
-from qgis.PyQt.QtWidgets import QAction, QMessageBox, QToolButton, QMenu, QTableView
+from qgis.PyQt.QtGui import QIcon
+from qgis.PyQt.QtWidgets import QAction, QMessageBox, QToolButton, QMenu, QTableView, QFileDialog
 from qgis.core import QgsProject, QgsProcessingFeatureSourceDefinition, QgsFeature, QgsVectorLayer, QgsPoint, QgsField, QgsWkbTypes, \
                       QgsMultiLineString, QgsLineString, QgsExpression, QgsFeatureRequest, QgsVectorLayerUtils, QgsVectorDataProvider, \
-                      QgsMarkerSymbol, QgsLineSymbol, QgsGeometry, QgsPointXY
+                      QgsMarkerSymbol, QgsLineSymbol, QgsGeometry, QgsPointXY, NULL
 
 # Initialize Qt resources from file resources.py
 from .resources import *
 # Import generic functions
 import common
-#from .common import getLayerByName
+#from .common import writeToCSV
 # Import the code for the point tool
-from .map_tools import PointMapTool, MovePointMapTool, SelectCPTool, FreehandPolygonMapTool
+from .map_tools import SelectDCpolyTool
 # Import the code for the dialog
 from .property_count_dialog import PropertyCountDialog
 import os.path
@@ -71,9 +71,13 @@ class NetworkDesignTools:
             self.translator.load(locale_path)
             QCoreApplication.installTranslator(self.translator)
 
+        common.initPrerequisites(self.iface)
+        if len(common.prerequisites) == 0 : return
+
         # initialize freeHandTools
         self.activeTool = None
         #self.pointTool = PointMapTool(self.iface.mapCanvas())
+        self.linkDCPolyTool = SelectDCpolyTool(self.iface, self.iface.mapCanvas())
         #self.movePointTool = MovePointMapTool(self.iface, self.iface.mapCanvas(), 'Toby Box', None)
         #self.CountPropertiesTool = SelectCPTool(self.iface, self.iface.mapCanvas())
         #self.freehandPolyTool = FreehandPolygonMapTool(self.iface.mapCanvas())
@@ -85,8 +89,6 @@ class NetworkDesignTools:
         self.toolbar = self.iface.addToolBar(u'NetworkDesignTools')
         self.toolbar.setObjectName(u'Network Design Tools')
 
-        common.initPrerequisites(self.iface)
-        if len(common.prerequisites) == 0 : return
         # Check if plugin was started the first time in current QGIS session
         # Must be set in initGui() to survive plugin reloads
         self.first_start = None
@@ -232,13 +234,34 @@ class NetworkDesignTools:
             callback=self.CreateBillofQuantities,
             parent=self.iface.mainWindow())
 
+        self.add_action(
+            os.path.join(icons_folder,'graphics-tablet.png'),
+            text=self.tr(u'Attribute Update'),
+            add_to_menu=False,
+            location='Custom',
+            callback=self.UpdateAttributes,
+            parent=self.iface.mainWindow())
+
+        dropCableBtn = self.add_action(
+            os.path.join(icons_folder,'node_add.png'),
+            text=self.tr(u'Drop cable builder'),
+            add_to_menu=False,
+            location='Custom',
+            callback=self.selectDCpolyObject,
+            parent=self.iface.mainWindow())
+        dropCableBtn.setCheckable(True)
+
+        self.linkDCPolyTool.setAction(dropCableBtn)
+        
         # Connect the handler for the pointTool click event
-        #self.CountPropertiesTool.canvasClicked.connect(self.selectPropObject)
-        #self.CountPropertiesTool.deactivated.connect(self.resetCPTool)
+        self.linkDCPolyTool.canvasClicked.connect(self.selectDCpolyObject)
+        self.linkDCPolyTool.deactivated.connect(self.resetDCpolyTool)
 
 
         # will be set False in run()
         self.first_start = True
+
+
 
     def closePlugin(self):
         qgis.utils.unloadPlugin('fibre_toolkit')
@@ -277,7 +300,290 @@ class NetworkDesignTools:
     def linkDP(self):
         pass
  
+
+    def BuildDropCable(self):
+        '''
+        Prompt user to click on pole
+        Prompt user to click on secondary node(SN) polygon
+        Select all address points in the SN
+        For each address point:
+        Draw a cable from the pole to the address point
+        Select the mastermap building polygon that the address point falls inside
+        Delete the part of the cable that falls inside the building
+        Save the cable id against the address point
+        Save the address point ID against the cable
+        Populate the cable fields
+        '''
+
+        """ The user should already have a pole object selected. Ensure 
+        this is the case and then send the geometry to the main 
+        function. """
+
+        layers = common.prerequisites['layers']
+        poleLyrname = layers['Poles']['name']
+        poleLyr = common.getLayerByName(self.iface, QgsProject.instance(), poleLyrname, True)
+        if poleLyr == None: return
+        
+        selectedLyr = self.iface.mapCanvas().currentLayer()
+
+        if bdryLyr == None:
+            return
+
+        if bdryLyr.name() != bdryLayerName:
+            errMsg = "You must select a polygon from the " + bdryLayerName + " layer."
+            errTitle = 'Wrong layer selected: ' + bdryLyr.name()
+            QMessageBox.critical(self.iface.mainWindow(), errTitle, errMsg)
+            return
+
+        if bdryLyr.selectedFeatureCount() > 1:
+            errMsg = "You must select a single polygon from the " + bdryLayerName + " layer."
+            errTitle = "Multiple polygons selected"
+            QMessageBox.critical(self.iface.mainWindow(), errTitle, errMsg)
+            return
+
+        layers = common.prerequisites['layers']
+        poleLyrname = layers['Poles']['name']
+
+        poleLyr = common.getLayerByName(self.iface, QgsProject.instance(), poleLyrname, True)
+        if poleLyr == None: return
+
+        self.iface.setActiveLayer(poleLyr)
+
+        QMessageBox.information(self.iface.mainWindow(),'Network Design Toolkit', 'Select a pole on the {} layer'.format(poleLyrname))
+
+
+        pass
+
+    def UpdateAttributes(self):
+        '''
+            check that selected poly is a PN
+            select all addresspoints in it (customer properties?)
+            update each addresspoint with AC??? SN TN LOC? 
+            Set the Length field to the length of the supply drop cable ?
+            add these fields if not exist already?
+            can this be done automatically?
+        '''
+
+        layers = common.prerequisites['layers']
+        bdryLayerName = layers['Boundaries']['name']
+        AddressLayerName = layers['Premises']['name']
+
+        bdryLyr = self.iface.mapCanvas().currentLayer()
+
+        if bdryLyr == None:
+            return
+
+        if bdryLyr.name() != bdryLayerName:
+            errMsg = "You must select a polygon from the " + bdryLayerName + " layer."
+            errTitle = 'Wrong layer selected: ' + bdryLyr.name()
+            QMessageBox.critical(self.iface.mainWindow(), errTitle, errMsg)
+            return
+
+        if bdryLyr.selectedFeatureCount() > 1:
+            errMsg = "You must select a single polygon from the " + bdryLayerName + " layer."
+            errTitle = "Multiple polygons selected"
+            QMessageBox.critical(self.iface.mainWindow(), errTitle, errMsg)
+            return
+
+        bdryFeat = bdryLyr.selectedFeatures()[0]
+        if bdryFeat['Type'] != '1':
+            print (bdryFeat['Type'])
+            errMsg = "You must select a Primary node polygon from the " + bdryLayerName + " layer."
+            errTitle = "Wrong polygon selected"
+            QMessageBox.critical(self.iface.mainWindow(), errTitle, errMsg)
+            return
+
+        reply = QMessageBox.question(self.iface.mainWindow(),'Network Design Toolkit', 'Update {} layer with values from {}?'.format(AddressLayerName,bdryLayerName))
+        if reply == QMessageBox.No:
+            return
+
+
+        tempLyr = QgsVectorLayer("Polygon?crs=EPSG:27700", "Temp_Boundary", "memory")
+        tempLyr.dataProvider().addFeature(bdryFeat)
+
+        cpLyr = common.getLayerByName(self.iface, QgsProject.instance(), AddressLayerName, True)
+
+        #get the intersecting properties
+        processing.run("qgis:selectbylocation", {'INPUT':cpLyr, 'INTERSECT':tempLyr, 'METHOD':0, 'PREDICATE':[0]})
+        processing.run("qgis:selectbylocation", {'INPUT':bdryLyr, 'INTERSECT':tempLyr, 'METHOD':0, 'PREDICATE':[0]})
+
+        cp_dp = cpLyr.dataProvider()
+
+        cpLyr.startEditing()
+
+        for cpfeat in cpLyr.selectedFeatures(): #set all to No first, then ignore any n/a=6
+            cpfeat.setAttribute('LOC', '1')
+            cpfeat.setAttribute('LOC_TYPE', NULL)
+            cpLyr.updateFeature(cpfeat)
+
+        for bdryfeat in bdryLyr.selectedFeatures():
+            for cpfeat in cpLyr.selectedFeatures():
+                if cpfeat.geometry().intersects(bdryfeat.geometry()) == True:
+                    
+                    bdryType = bdryfeat['Type']  
+                    if bdryType == '1': # UGPN
+                        cpfeat.setAttribute('PN', bdryfeat['Name'])
+                    elif bdryType == '2' or bdryType == '3': # UGSN or PMSN
+                        cpfeat.setAttribute('SN', bdryfeat['Name'])
+                    elif bdryType == '4': # UGCE ?
+                        cpfeat.setAttribute('TN', bdryfeat['Name'])
+
+                    LOC = bdryfeat['LOC']
+                    if LOC != '6': # = 'N/A' Set the LOC to true if inside an LOC polygon, Set LOCType to the LOC type value
+                        cpfeat.setAttribute('LOC', '2')
+            
+                        if LOC == '1': #Wayleave
+                            cpfeat.setAttribute('LOC_TYPE', 'WL')
+                        elif LOC == '2': #Private Road
+                            cpfeat.setAttribute('LOC_TYPE', 'PR')
+                        elif LOC == '3': #Uneconomical
+                            cpfeat.setAttribute('LOC_TYPE', 'UE')
+                        elif LOC == '4': #Section 58
+                            cpfeat.setAttribute('LOC_TYPE', 'S58')
+                        elif LOC == '5': #Conservation
+                            cpfeat.setAttribute('LOC_TYPE', 'CON')
+                    #else:
+                    #    print('setting LOC to N')
+                    #    cpfeat.setAttribute('LOC', 'N')
+                    #    cpfeat.setAttribute('LOC_TYPE', '')
+                     
+                    #cpLyr.updateFields()
+                    cpLyr.updateFeature(cpfeat)
+
+        cpLyr.commitChanges()
+                 
+
+        pass
+
+
     def CreateBillofQuantities(self):
+        layers = common.prerequisites['layers']
+        bdryLayerName = layers['Boundaries']['name'] 
+        bdryLyr = self.iface.mapCanvas().currentLayer()
+        if bdryLyr == None:
+            return
+
+        if bdryLyr.name() != bdryLayerName:
+            errMsg = "You must select a polygon from the " + bdryLayerName + " layer."
+            errTitle = 'Wrong layer selected: ' + bdryLyr.name()
+            QMessageBox.critical(self.iface.mainWindow(), errTitle, errMsg)
+            return
+
+        if bdryLyr.selectedFeatureCount() > 1:
+            errTitle = "Multiple polygons selected"
+            QMessageBox.critical(self.iface.mainWindow(), errTitle, errMsg)
+            return
+
+        bdryFeat = bdryLyr.selectedFeatures()[0]
+        if bdryFeat['Type'] != '1':
+            print (bdryFeat['Type'])
+            errMsg = "You must select a Primary node polygon from the " + bdryLayerName + " layer."
+            errTitle = "Wrong polygon selected"
+            QMessageBox.critical(self.iface.mainWindow(), errTitle, errMsg)
+            return
+
+        #get the boundary, for selecting everything else
+        tempLyr = QgsVectorLayer("Polygon?crs=EPSG:27700", "Temp_Boundary", "memory")
+        tempLyr.dataProvider().addFeature(bdryFeat)
+
+        #csvFileName  = layers['BillofQuantities']['source']
+        csvFileName = QFileDialog.getSaveFileName(caption='Save Bill of Quantities As', filter='CSV (Comma delimited) (*.csv)', directory=os.path.expanduser('~'))[0]
+        if csvFileName == '':
+            return
+        #run through the required checks from the json file
+        i=0
+        isFirst=True
+        try:
+            searchLayer = layers['BillofQuantities']['stats']['Stat'+str(i)]['Layer']
+        except:
+            searchLayer = ""
+
+        while searchLayer != '':
+            #print(layers['BillofQuantities']['stats']['Stat'+str(i)]['Title'])
+            
+            try:
+                searchName = layers['BillofQuantities']['stats']['Stat'+str(i)]['Title']
+            except:
+                searchName = "untitled"
+
+            cpLyr = common.getLayerByName(self.iface, QgsProject.instance(), searchLayer, True)
+            if cpLyr != None: 
+                processing.run("qgis:selectbylocation", {'INPUT':cpLyr, 'INTERSECT':tempLyr, 'METHOD':0, 'PREDICATE':[0]})
+
+                try:
+                    fldName = layers['BillofQuantities']['stats']['Stat'+str(i)]['Field']
+                except:
+                    fldName = ""
+
+                if fldName == '': #a straight count
+                    ans = writeToCSV(self.iface, csvFileName,{'Item':searchName, 'Quantity': str(cpLyr.selectedFeatureCount())}, isFirst)
+                    isFirst = False
+                else: #group by the field name, write each value+count to the csv 
+                    #processing.run("qgis:saveselectedfeatures",cpLyr,'xgtemp')
+                    ans = writeToCSV(self.iface, csvFileName,{'Item':searchName, 'Quantity': ''}, isFirst)
+                    isFirst = False
+
+                   # tempLyr2 = QgsVectorLayer("Point?crs=EPSG:27700", "temp", "memory")
+                   # tempLyr2.dataProvider().addAttributes( [ QgsField("Desc", QVariant.String) ] )
+                   # tempLyr2.updateFields()
+                    aDict = {}
+                    
+                    for feat in cpLyr.selectedFeatures():
+                        #print('fldName='+ fldName)
+                        #fldVal = ''
+                        fldVal = feat[fldName]
+                        #print('fldVal='+fldVal)
+                        dictValue = aDict.get(fldVal)
+                        if dictValue == None:
+                            aDict[fldVal] = 1
+                        else:
+                            aDict[fldVal] = dictValue + 1
+                        
+
+                        #pc = QgsVectorLayerUtils.createFeature(tempLyr2)
+                        #pc.setGeometry(feat.geometry())
+                        #pc.setAttribute('Desc', feat[fldName])
+
+                    #tempLyr2.commitChanges()
+
+                    #query = "Select count(*) numOf,{0} from [temp] group by {0}".format(fldName)
+                   # vlayer = QgsVectorLayer( "?query={}".format(query), 'counts_', "virtual" )
+                    for x, y in aDict.items():
+                        #print (x)
+                        #print (aDict[x])
+                        ans = writeToCSV(self.iface, csvFileName,{'Item': x, 'Quantity': y}, isFirst)
+                        isFirst = False
+
+            i+=1
+            try:    
+                searchLayer = layers['BillofQuantities']['stats']['Stat'+str(i)]['Layer']
+            except:
+                searchLayer = ""
+                pass
+
+        #select all properties overlapping
+    #    bldLayerName = layers['Premises']['name']
+    #    cpLyr = common.getLayerByName(self.iface, QgsProject.instance(), bldLayerName, True)
+    #    processing.run("qgis:selectbylocation", {'INPUT':cpLyr, 'INTERSECT':tempLyr, 'METHOD':0, 'PREDICATE':[0]})
+
+        #add Premises FED total | cpLyr.selectedFeatureCount()
+        #to a csv
+        #BillofQuantites
+        
+        #csvData = []
+
+        #csvData.append({'Item':'Premises FED total', 'Quantity': str(cpLyr.selectedFeatureCount())})
+        
+        #csvData.append({'Item':'Premises aerially fed', 'Quantity': str(cpLyr.selectedFeatureCount())})
+       
+        
+    #    ans = writeToCSV(self.iface, csvFileName,{'Item':'Premises FED total', 'Quantity': str(cpLyr.selectedFeatureCount())}, True)
+    #    ans = writeToCSV(self.iface, csvFileName,{'Item':'Premises aerially fed', 'Quantity': str(cpLyr.selectedFeatureCount())})
+
+        #ans = writeToCSV(self.iface, csvFileName,csvData)
+
+        reply = QMessageBox.information(self.iface.mainWindow(),'Network Design Toolkit', 'Bill of quantities file created.\n' + csvFileName , QMessageBox.Ok)
+
 
 
         pass
@@ -297,6 +603,7 @@ class NetworkDesignTools:
             return
 
         if bdryLyr.selectedFeatureCount() > 1:
+            errMsg = "You must select a single polygon from the " + bdryLayerName + " layer."
             errTitle = "Multiple polygons selected"
             QMessageBox.critical(self.iface.mainWindow(), errTitle, errMsg)
             return
@@ -317,6 +624,8 @@ class NetworkDesignTools:
         for feat in cpLyr.selectedFeatures():
             pc = QgsVectorLayerUtils.createFeature(tempLyr2)
             pc.setGeometry(feat.geometry())
+            #feat.asPoint().x()
+            #feat.asPoint().y()
             pc.setAttribute('x', feat['X'])
             pc.setAttribute('y', feat['Y'])
             tempLyr2.dataProvider().addFeature(pc)
@@ -394,4 +703,16 @@ class NetworkDesignTools:
         reply = QMessageBox.information(self.iface.mainWindow(),'Network Design Toolkit', str(cpLyr.selectedFeatureCount()) +' properties in this area.', QMessageBox.Ok)
         
 
+# Map Tool Event Handlers
 
+    def selectDCpolyObject(self):
+        #snap = QgsSnappingUtils()
+        #self.snapConfig = snap.config()
+
+        #check that a Pole is already selected
+
+        if self.linkDCPolyTool.isActive() == False:
+            self.iface.mapCanvas().setMapTool(self.linkDCPolyTool)
+
+    def resetDCpolyTool(self):
+        self.dropCableBtn.setChecked(False)
