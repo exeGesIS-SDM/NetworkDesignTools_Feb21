@@ -6,5 +6,6 @@
         <file>icons/table_view.png</file>
         <file>icons/graphics-tablet.png</file>
         <file>icons/node_add.png</file>
+        <file>icons/cable_add.png</file>
     </qresource>
 </RCC>

@@ -21,10 +21,6 @@
  *                                                                         *
  ***************************************************************************/
 """
-import sys
-import os.path
-sys.path.append(os.path.dirname(__file__))
-
 from qgis.PyQt.QtCore import Qt, QSettings, QTranslator, QCoreApplication, QVariant
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction, QMessageBox, QToolButton, QMenu, QTableView, QFileDialog
@@ -35,12 +31,14 @@ from qgis.core import QgsProject, QgsProcessingFeatureSourceDefinition, QgsFeatu
 # Initialize Qt resources from file resources.py
 from .resources import *
 # Import generic functions
-import common
+from network_design_tools import common
 #from .common import writeToCSV
 # Import the code for the point tool
-from .map_tools import SelectDCpolyTool
+from .map_tools import SelectDCpolyTool, ConnectNodesMapTool
 # Import the code for the dialog
 from .property_count_dialog import PropertyCountDialog
+# Import the code to connect nodes
+from .connect_points import createNodeCable
 import os.path
 import processing
 
@@ -78,6 +76,7 @@ class NetworkDesignTools:
         self.activeTool = None
         #self.pointTool = PointMapTool(self.iface.mapCanvas())
         self.linkDCPolyTool = SelectDCpolyTool(self.iface, self.iface.mapCanvas())
+        self.connectNodesTool = ConnectNodesMapTool(self.iface, self.iface.mapCanvas())
         #self.movePointTool = MovePointMapTool(self.iface, self.iface.mapCanvas(), 'Toby Box', None)
         #self.CountPropertiesTool = SelectCPTool(self.iface, self.iface.mapCanvas())
         #self.freehandPolyTool = FreehandPolygonMapTool(self.iface.mapCanvas())
@@ -250,13 +249,25 @@ class NetworkDesignTools:
             callback=self.selectDCpolyObject,
             parent=self.iface.mainWindow())
         dropCableBtn.setCheckable(True)
-
         self.linkDCPolyTool.setAction(dropCableBtn)
-        
+             
+        cableBtn = self.add_action(
+            os.path.join(icons_folder,'cable_add.png'),
+            text=self.tr(u'Cable builder'),
+            add_to_menu=False,
+            location='Custom',
+            callback=self.selectNodes,
+            parent=self.iface.mainWindow())
+        cableBtn.setCheckable(True)
+        self.connectNodesTool.setAction(cableBtn)
+               
         # Connect the handler for the pointTool click event
         self.linkDCPolyTool.canvasClicked.connect(self.selectDCpolyObject)
         self.linkDCPolyTool.deactivated.connect(self.resetDCpolyTool)
-
+        
+        # Connect the handler for the connectNodesTool click event
+        self.connectNodesTool.pointsClicked.connect(self.generateCable)
+        self.connectNodesTool.deactivated.connect(self.resetConnectNodesTool)
 
         # will be set False in run()
         self.first_start = True
@@ -273,6 +284,11 @@ class NetworkDesignTools:
                 self.tr(u'&Network Design Tools'),
                 action)
             self.iface.removeToolBarIcon(action)
+
+        # disconnect the auto cable tool handler
+        self.connectNodesTool.pointsClicked.disconnect(self.generateCable)
+        self.connectNodesTool.deactivated.disconnect(self.resetConnectNodesTool)
+        del self.connectNodesTool
 
         # remove the custom toolbar
         del self.toolbar
@@ -702,6 +718,14 @@ class NetworkDesignTools:
 
         reply = QMessageBox.information(self.iface.mainWindow(),'Network Design Toolkit', str(cpLyr.selectedFeatureCount()) +' properties in this area.', QMessageBox.Ok)
         
+    
+    def selectNodes(self):
+        # Activate cable tool if required
+        # Store snappingConfig to reset afterwards
+        #self.snapConfig = QgsProject.instance().snappingConfig()
+
+        if self.connectNodesTool.isActive() == False:
+            self.iface.mapCanvas().setMapTool(self.connectNodesTool)
 
 # Map Tool Event Handlers
 
@@ -716,3 +740,9 @@ class NetworkDesignTools:
 
     def resetDCpolyTool(self):
         self.dropCableBtn.setChecked(False)
+
+    def generateCable(self, startPoint, startLayerName, startFid, endPoint, endLayerName, endFid):
+        createNodeCable(self.iface, startPoint, startLayerName, startFid, endPoint, endLayerName, endFid)
+
+    def resetConnectNodesTool(self):
+        self.cableBtn.setChecked(False)

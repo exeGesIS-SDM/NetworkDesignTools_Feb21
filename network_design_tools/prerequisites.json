@@ -3,17 +3,19 @@
     "layers":{
          "Boundaries": {
              "name": "Boundaries",
-             "source": "./Layers/Boundaries.shp",
+             "source": "./Shapefiles/Boundaries.shp",
              "fields": {
-                 "Type": "Type",
-                 "Homes": "Homes",
-                 "Address": "Address",
-                 "Name": "Name"
+                 "type": "Type",
+                 "premises": "Premises",
+                 "address": "Address",
+                 "name": "Name",
+                 "loc": "LOC",
+                 "comments": "Comments"
              }
          },
          "Premises": {
             "name": "Customer Premises",
-            "source": "./Layers/Customer Premises.shp",
+            "source": "./Shapefiles/Customer Premises.shp",
             "fields": {
                 "Type": "Type",
                 "Homes": "Homes",
@@ -78,327 +80,145 @@
             },
         "Poles": {
             "name": "BT Pole",
-            "source": "./Layers/Poles.shp",
+            "source": "./Shapefiles/BT Pole.shp",
             "fields": {
-                "Surface": "Surface",
-                "Type": "Type",
-                "Y": "Y",
-                "X": "X",
-                "Use": "Use",
-                "Owner": "Owner",
-                "ORPointType": "CP/DP/JP",
-                "ID": "ID",
-                "Comments": "Comments",
-                "TestDate": "Test Date",
-                "A1024": "A1024",
-                "ExistWire": "exist_wire",
-                "Capping": "capping",
-                "TestHazards": "hazards",
-                "Age": "age",
-                "Wayleave": "Wayleave",
-                "Comment": "Comment",
-                "BTId": "BT_ID",
-                "TreeTrim": "Tree_Trim",
-                "JointUser": "Joint_User"
+                "id": "OBJECT_ID",
+                "plantItem": "PLANT_ITEM"
             }
         },       
-         "Cabinet": {
-             "name": "Cabinet",
-             "source": "./Layers/Cabinet.shp",
+        "Cabinet": {
+            "name": "Cabinets",
+            "source": "./Shapefiles/Cabinets.shp",
+            "fields": {
+                "id": "cabinet ID",
+                "splitters": "Splitters",
+                "premises": "premises",
+                "comments": "Comments",
+                "loc": "LOC",
+                "surface": "Surface",
+                "use": "Use",
+                "address": "Address",
+                "rotation": "Rotation"
+            }
+        },
+        "Cable": {
+            "name": "Cable",
+            "source": "./Layers/Cable.shp",
+            "fields": {
+                "id": "id",
+                "feed": "Feed",
+                "type": "Type",
+                "use": "Use",
+                "name": "Cable name",
+                "comments": "Comments"
+            }
+        },
+        "Chamber": {
+            "name": "Chambers",
+            "source": "./Shapefiles/Chamber.shp",
+            "fields": {
+                "id": "ID",
+                "surface": "Surface",
+                "use": "Use",
+                "state": "State",
+                "type": "Type",
+                "loc": "LOC",
+                "comments": "Comments",
+                "x": "X",
+                "y": "Y"
+            }
+        },
+        "BTChamber": {
+            "name": "BT Chambers",
+            "source": "./Shapefiles/BT Chambers.shp"
+        },
+        "BTDuct": {
+            "name": "BT Duct",
+            "source": "./Shapefiles/BT Duct.shp",
+            "fields": {
+                "plantItem": "PLANT_ITEM"
+            }
+        },
+        "Duct": {
+            "name": "Duct",
+            "source": "./Shapefiles/Duct.shp",
+            "fields": {
+                "surface": "Surface",
+                "material": "Material",
+                "7_3.5mm": "7/3.5mm",
+                "12_8mm": "12/8mm",
+                "110mm": "110mm",
+                "comments": "Comments",
+                "loc": "LOC"
+            }
+        },
+        "Joint": {
+             "name": "Joints",
+             "source": "./Shapefiles/Joints.shp",
              "fields": {
-                 "Type": "Type",
-                 "Address": "Address",
-                 "X": "X",
-                 "Y": "Y",
-                 "Name": "Name",
-                 "rotation": "rotation"
+                 "id": "Joint ID",
+                 "address": "Address",
+                 "position": "Position",
+                 "size": "Size",
+                 "comments": "Comments",
+                 "x": "X coord",
+                 "y": "Y coord",
+                 "loc": "LOC"
              }
          },
-         "Cable": {
-             "name": "Cable",
-             "source": "./Layers/Cable.shp",
-             "fields": {
-                 "Type": "Type",
-                 "FibreIndex": "Fibre Inde",
-                 "Length": "Length",
-                 "ID": "ID",
-                 "Branch": "Branch",
-                 "Address": "Address",
-                 "UPRN": "UPRN",
-                 "DPName": "DP Name",
-                 "Length10": "length+10%"
-             }
-         },
-         "Chamber": {
-             "name": "Chamber",
-             "source": "./Layers/Chamber.shp",
-             "fields": {
-                 "Type": "Type",
-                 "Comments": "Comments",
-                 "Surface": "Surface",
-                 "Owner": "Owner",
-                 "X": "X",
-                 "Y": "Y",
-                 "CoreDrill": "Core drill",
-                 "ID": "ID",
-                 "Equipment": "Equipment",
-                 "Wayleave": "Wayleave",
-                 "OpenReachRef": "OR ref",
-                 "Rotation": "rotation"
-             }
-         },
-         "DistributionPoints": {
-             "name": "DistributionPoints",
-             "source": "./Layers/DistributionPoints.shp",
-             "fields": {
-                 "Fibre Inde": "Fibre Inde",
-                 "Type": "Type",
-                 "TrayNo": "Tray No",
-                 "OutputNo": "Output No",
-                 "PFDPId": "PFDP ID",
-                 "Branch": "Branch",
-                 "Address": "Address",
-                 "Cabinet": "Cabinet",
-                 "MultiUse": "Multi-Use"
-             }
-         },
-         "Duct": {
-             "name": "Duct",
-             "source": "./Layers/Duct.shp",
-             "fields": {
-                 "ID": "ID",
-                 "Type": "Type",
-                 "Surface": "Surface",
-                 "PIAStatus": "PIA status",
-                 "OpenReachRef": "OR ref",
-                 "Address": "Address",
-                 "Length": "length",
-                 "UPRN": "UPRN"
-             }
-         },
-         "IBTJoints": {
-             "name": "IBT & Joints",
-             "source": "./Layers/IBT & Joints.shp",
-             "fields": {
-                 "id": "id",
-                 "Type": "Type",
-                 "Address": "Address",
-                 "B Split": "B Split",
-                 "PFDP": "PFDP",
-                 "Cabinet": "Cabinet",
-                 "Branch": "Branch"
-             }
-         },
-         "PMHLand": {
-             "name": "Liability for Maintenance",
-             "source": "./PMH Land Lincolnshire/Liability for Maintenance.shp|layername=Liability for Maintenance|geometrytype=Polygon",
-             "fields": {
-                 "DISTRICT": "DISTRICT",
-                 "PARISH": "PARISH",
-                 "COLOUR": "COLOUR",
-                 "DATEPLOTTE": "DATEPLOTTE",
-                 "OSUPDATE": "OSUPDATE",
-                 "AGREEMENTR": "AGREEMENTR",
-                 "SECTION38D": "SECTION38D",
-                 "SECTION31": "SECTION3_1",
-                 "ADOPTEDDAT": "ADOPTEDDAT",
-                 "QueryMatte": "QueryMatte",
-                 "Checked": "Checked",
-                 "POSITIONAL": "POSITIONAL",
-                 "LANDREGTIT": "LANDREGTIT",
-                 "DEEDPARCEL": "DEEDPARCEL",
-                 "HOTLINK": "HOTLINK",
-                 "MAPSHEETNO": "MAPSHEETNO",
-                 "REFNO": "REFNO",
-                 "STOPPINGUP": "STOPPINGUP",
-                 "NOTES": "NOTES",
-                 "KEY": "KEY"
-             }
+         "Node": {
+            "name": "Nodes",
+            "source": "./Shapefiles/Nodes.shp",
+            "fields": {
+                 "id": "Node ID",
+                 "splitters": "Splitters",
+                 "premises": "Premises",
+                 "address": "Address",
+                 "comments": "Comments",
+                 "loc": "LOC",
+                 "x": "X",
+                 "y": "Y",
+                 "use": "Use",
+                 "position": "Position"
+            }
          },
          "TopoArea": {
-             "name": "OS_MasterMap_Areas",
-             "source": "./Mastermap & UPRN Data/OSMM/OS_MasterMap_Areas.shp|layername=OS_MasterMap_Areas",
+             "name": "Topographic Area",
+             "source": "./Shapefiles/Topographic Area.shp|layername=Topographic Area",
              "fields": {
-                 "GMLAYER": "GM_LAYER",
-                 "LAYER": "LAYER",
-                 "GMTYPE": "GM_TYPE",
                  "fid": "fid",
-                 "FeatureCode": "osgb_featu",
-                 "VersionNo": "osgb_versi",
-                 "VersionDate": "osgb_vers1",
-                 "Theme": "osgb_theme",
-                 "CalcArea": "osgb_calcu",
-                 "ChangeDate": "osgb_chang",
-                 "ChangeReason": "osgb_reaso",
-                 "DescriptiveGroup": "osgb_descr",
-                 "DescriptiveTerm": "osgb_desc1",
-                 "Make": "osgb_make",
-                 "PhysicalLevel": "osgb_physi",
-                 "PhysicalPresence": "osgb_phys1"
+                 "featureCode": "featureCod",
+                 "versionNo": "version",
+                 "versionDate": "versionDat",
+                 "theme": "theme",
+                 "calcArea": "calculated",
+                 "changeDate": "changeDate",
+                 "changeReason": "reasonForC",
+                 "descriptiveGroup": "descriptiv",
+                 "descriptiveTerm": "descript_1",
+                 "make": "make",
+                 "physicalLevel": "physicalLe",
+                 "physicalPresence": "physicalPr"
              }
          },
          "TopoLine": {
-             "name": "OS_MasterMap_Lines",
-             "source": "./Mastermap & UPRN Data/OSMM/OS_MasterMap_Lines.shp|layername=OS_MasterMap_Lines",
+             "name": "Topographicline",
+             "source": "./Shapefiles/Topographicline.shp|layername=Topographicline",
              "fields": {
-                 "fid": "fid",
-                 "FeatureCode": "osgb_featu",
-                 "VersionNo": "osgb_versi",
-                 "VersionDate": "osgb_vers1",
-                 "Theme": "osgb_theme",
-                 "AccuracyOfPosition": "osgb_accur",
-                 "ChangeDate": "osgb_chang",
-                 "ChangeReason": "osgb_reaso",
-                 "DescriptiveGroup": "osgb_descr",
-                 "DescriptiveTerm": "osgb_desc1",
-                 "PhysicalLevel": "osgb_physi",
-                 "PhysicalPresence": "osgb_phys1",
-                 "Make": "osgb_make",
-                 "NonBoundingLine": "osgb_nonBo"
-             }
-         },
-         "TopoPoint": {
-             "name": "OS_MasterMap_Points",
-             "source": "./Mastermap & UPRN Data/OSMM/OS_MasterMap_Points.shp|layername=OS_MasterMap_Points",
-             "fields": {
-                 "GMLAYER": "GM_LAYER",
-                 "NAME": "NAME",
-                 "LAYER": "LAYER",
-                 "GMTYPE": "GM_TYPE",
-                 "ELEVATION": "ELEVATION",
-                 "fid": "fid",
-                 "FeatureCode": "osgb_featu",
-                 "VersionNo": "osgb_versi",
-                 "VersionDate": "osgb_vers1",
-                 "Theme": "osgb_theme",
-                 "ChangeDate": "osgb_chang",
-                 "ChangeReason": "osgb_reaso",
-                 "DescriptiveGroup": "osgb_descr",
-                 "Make": "osgb_make",
-                 "PhysicalLevel": "osgb_physi",
-                 "AnchorPoint": "osgb_ancho",
-                 "Font": "osgb_font",
-                 "FontHeight": "osgb_heigh",
-                 "Orientation": "osgb_orien",
-                 "TextString": "osgb_textS",
-                 "DescriptiveTerm": "osgb_desc1",
-                 "osgbrefer": "osgb_refer",
-                 "PhysicalPresence": "osgb_phys1",
-                 "AccuracyOfPosition": "osgb_accur",
-                 "HeightAboveDatum": "osgb_heig1",
-                 "AccuracyOfHeight": "osgb_accu1"
-             }
-         },
-         "PFDP": {
-             "name": "PFDP",
-             "source": "./Layers/PFDP.shp",
-             "fields": {
-                 "id": "id",
-                 "Splitters": "Splitters",
-                 "Cabinet": "Cabinet",
-                 "Homes": "Homes",
-                 "Address": "Address",
-                 "Name": "Name"
-             }
-         },
-         "RAGStatus": {
-             "name": "RAGStatus",
-             "source": "./Layers/RAG Status.shp",
-             "fields": {
-                 "id": "id",
-                 "Status": "Status"
-             }
-         },
-         "SweptTee": {
-             "name": "SweptTee",
-             "source": "./Layers/SweptTee.shp",
-             "fields": {
-                 "Rotation": "Rotation",
-                 "UPRN": "UPRN",
-                 "Address": "Address"
-             }
-         },
-         "TobyBox": {
-             "name": "Toby Box",
-             "source": "./Layers/Toby Box.shp",
-             "fields": {
-                 "Rotation": "Rotate",
-                 "Type": "Type",
-                 "Address": "Address",
-                 "UPRN": "UPRN"
-             }
-         },
-         "UPRN": {
-             "name": "UPRN",
-             "source": "./Mastermap & UPRN Data/addressbase_premium.gpkg|layername=UPRN",
-             "fields": {
-                 "fid": "fid",
-                 "UPRN": "uprn",
-                 "classificationcode": "classification_code",
-                 "orgkey": "org_key",
-                 "organisation": "organisation",
-                 "legalname": "legal_name",
-                 "udprn": "udprn",
-                 "organisationname": "organisation_name",
-                 "departmentname": "department_name",
-                 "subbuildingname": "sub_building_name",
-                 "buildingname": "building_name",
-                 "buildingnumber": "building_number",
-                 "dependentthoroughfare": "dependent_thoroughfare",
-                 "thoroughfare": "thoroughfare",
-                 "doubledependentlocality": "double_dependent_locality",
-                 "dependentlocality": "dependent_locality",
-                 "posttown": "post_town",
-                 "postcode": "postcode",
-                 "postcodetype": "postcode_type",
-                 "deliverypointsuffix": "delivery_point_suffix",
-                 "logicalstatus": "logical_status",
-                 "saostartnumber": "sao_start_number",
-                 "saostartsuffix": "sao_start_suffix",
-                 "saoendnumber": "sao_end_number",
-                 "saoendsuffix": "sao_end_suffix",
-                 "saotext": "sao_text",
-                 "paostartnumber": "pao_start_number",
-                 "paostartsuffix": "pao_start_suffix",
-                 "paoendnumber": "pao_end_number",
-                 "paoendsuffix": "pao_end_suffix",
-                 "paotext": "pao_text",
-                 "USRN": "usrn",
-                 "uprn1": "uprn_1",
-                 "ParentUPRN": "parent_uprn",
-                 "XCoordinate": "x_coordinate",
-                 "YCoordinate": "y_coordinate",
-                 "Latitude": "latitude",
-                 "Longitude": "longitude",
-                 "DPAddress": "deliverypointaddress",
-                 "LPIAddress": "lpiaddress"
-             }
-         },
-         "USRN": {
-             "name": "USRN",
-             "source": "./Mastermap & UPRN Data/addressbase_premium.gpkg|layername=USRN",
-             "fields": {
-                 "fid": "fid",
-                 "USRN": "usrn",
-                 "Description": "street_description",
-                 "Surface": "street_surface",
-                 "Classification": "street_classification",
-                 "StartX": "street_start_x",
-                 "StartY": "street_start_y",
-                 "EndX": "street_end_x",
-                 "EndY": "street_end_y"
-             }
-         },
-         "WorkNotes": {
-             "name": "Work Notes",
-             "source": "./Layers/Work Notes.shp",
-             "fields": {
-                 "ID": "ID",
-                 "Address": "Address",
-                 "Comments": "Comments",
-                 "X": "X",
-                 "Y": "Y"
+                "fid": "fid",
+                "featureCode": "featureCod",
+                "versionNo": "version",
+                "versionDate": "versionDat",
+                "theme": "theme",
+                "accuracyOfPosition": "accuracyOf",
+                "changeDate": "changeDate",
+                "changeReason": "reasonForC",
+                "descriptiveGroup": "descriptiv",
+                "descriptiveTerm": "descript_1",
+                "make": "make",
+                "physicalLevel": "physicalLe",
+                "physicalPresence": "physicalPr"
              }
          }
     }
- }
+}
