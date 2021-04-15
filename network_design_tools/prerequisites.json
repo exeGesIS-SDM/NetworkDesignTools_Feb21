@@ -3,7 +3,7 @@
     "layers":{
          "Boundaries": {
              "name": "Boundaries",
-             "source": "./Layers/Boundaries.shp",
+             "source": "./Shapefiles/Boundaries.shp",
              "fields": {
                  "Type": "Type",
                  "Homes": "Homes",
@@ -13,7 +13,7 @@
          },
          "Premises": {
             "name": "Customer Premises",
-            "source": "./Layers/Customer Premises.shp",
+            "source": "./Shapefiles/Customer Premises.shp",
             "fields": {
                 "Type": "Type",
                 "Homes": "Homes",
@@ -23,7 +23,7 @@
         },
         "PropertyCount": {
             "name": "PropertyCount",
-            "source": "./Layers/PropertyCount.shp",
+            "source": "./Shapefiles/PropertyCount.shp",
             "fields": {
                 "Count": "NumProp"
             }
@@ -78,7 +78,7 @@
             },
         "Poles": {
             "name": "BT Pole",
-            "source": "./Layers/Poles.shp",
+            "source": "./Shapefiles/BT Pole.shp",
             "fields": {
                 "Surface": "Surface",
                 "Type": "Type",
@@ -102,21 +102,10 @@
                 "JointUser": "Joint_User"
             }
         },       
-         "Cabinet": {
-             "name": "Cabinet",
-             "source": "./Layers/Cabinet.shp",
-             "fields": {
-                 "Type": "Type",
-                 "Address": "Address",
-                 "X": "X",
-                 "Y": "Y",
-                 "Name": "Name",
-                 "rotation": "rotation"
-             }
-         },
+        
          "Cable": {
              "name": "Cable",
-             "source": "./Layers/Cable.shp",
+             "source": "./Shapefiles/Cable.shp",
              "fields": {
                  "Type": "Type",
                  "FibreIndex": "Fibre Inde",
@@ -129,27 +118,10 @@
                  "Length10": "length+10%"
              }
          },
-         "Chamber": {
-             "name": "Chamber",
-             "source": "./Layers/Chamber.shp",
-             "fields": {
-                 "Type": "Type",
-                 "Comments": "Comments",
-                 "Surface": "Surface",
-                 "Owner": "Owner",
-                 "X": "X",
-                 "Y": "Y",
-                 "CoreDrill": "Core drill",
-                 "ID": "ID",
-                 "Equipment": "Equipment",
-                 "Wayleave": "Wayleave",
-                 "OpenReachRef": "OR ref",
-                 "Rotation": "rotation"
-             }
-         },
+         
          "DistributionPoints": {
              "name": "DistributionPoints",
-             "source": "./Layers/DistributionPoints.shp",
+             "source": "./Shapefiles/DistributionPoints.shp",
              "fields": {
                  "Fibre Inde": "Fibre Inde",
                  "Type": "Type",
@@ -176,65 +148,24 @@
                  "UPRN": "UPRN"
              }
          },
-         "IBTJoints": {
-             "name": "IBT & Joints",
-             "source": "./Layers/IBT & Joints.shp",
-             "fields": {
-                 "id": "id",
-                 "Type": "Type",
-                 "Address": "Address",
-                 "B Split": "B Split",
-                 "PFDP": "PFDP",
-                 "Cabinet": "Cabinet",
-                 "Branch": "Branch"
-             }
-         },
-         "PMHLand": {
-             "name": "Liability for Maintenance",
-             "source": "./PMH Land Lincolnshire/Liability for Maintenance.shp|layername=Liability for Maintenance|geometrytype=Polygon",
-             "fields": {
-                 "DISTRICT": "DISTRICT",
-                 "PARISH": "PARISH",
-                 "COLOUR": "COLOUR",
-                 "DATEPLOTTE": "DATEPLOTTE",
-                 "OSUPDATE": "OSUPDATE",
-                 "AGREEMENTR": "AGREEMENTR",
-                 "SECTION38D": "SECTION38D",
-                 "SECTION31": "SECTION3_1",
-                 "ADOPTEDDAT": "ADOPTEDDAT",
-                 "QueryMatte": "QueryMatte",
-                 "Checked": "Checked",
-                 "POSITIONAL": "POSITIONAL",
-                 "LANDREGTIT": "LANDREGTIT",
-                 "DEEDPARCEL": "DEEDPARCEL",
-                 "HOTLINK": "HOTLINK",
-                 "MAPSHEETNO": "MAPSHEETNO",
-                 "REFNO": "REFNO",
-                 "STOPPINGUP": "STOPPINGUP",
-                 "NOTES": "NOTES",
-                 "KEY": "KEY"
-             }
-         },
+
          "TopoArea": {
-             "name": "OS_MasterMap_Areas",
-             "source": "./Mastermap & UPRN Data/OSMM/OS_MasterMap_Areas.shp|layername=OS_MasterMap_Areas",
+             "name": "Topographic Area",
+             "source": "./Shapefiles/Topographic Area.shp|layername=Topographic Area",
              "fields": {
-                 "GMLAYER": "GM_LAYER",
-                 "LAYER": "LAYER",
-                 "GMTYPE": "GM_TYPE",
                  "fid": "fid",
-                 "FeatureCode": "osgb_featu",
-                 "VersionNo": "osgb_versi",
-                 "VersionDate": "osgb_vers1",
-                 "Theme": "osgb_theme",
-                 "CalcArea": "osgb_calcu",
-                 "ChangeDate": "osgb_chang",
-                 "ChangeReason": "osgb_reaso",
-                 "DescriptiveGroup": "osgb_descr",
-                 "DescriptiveTerm": "osgb_desc1",
-                 "Make": "osgb_make",
-                 "PhysicalLevel": "osgb_physi",
-                 "PhysicalPresence": "osgb_phys1"
+                 "featureCode": "featureCod",
+                 "versionNo": "version",
+                 "versionDate": "versionDat",
+                 "theme": "theme",
+                 "calcArea": "calculated",
+                 "changeDate": "changeDate",
+                 "changeReason": "reasonForC",
+                 "descriptiveGroup": "descriptiv",
+                 "descriptiveTerm": "descript_1",
+                 "make": "make",
+                 "physicalLevel": "physicalLe",
+                 "physicalPresence": "physicalPr"
              }
          },
          "TopoLine": {
@@ -289,45 +220,7 @@
                  "AccuracyOfHeight": "osgb_accu1"
              }
          },
-         "PFDP": {
-             "name": "PFDP",
-             "source": "./Layers/PFDP.shp",
-             "fields": {
-                 "id": "id",
-                 "Splitters": "Splitters",
-                 "Cabinet": "Cabinet",
-                 "Homes": "Homes",
-                 "Address": "Address",
-                 "Name": "Name"
-             }
-         },
-         "RAGStatus": {
-             "name": "RAGStatus",
-             "source": "./Layers/RAG Status.shp",
-             "fields": {
-                 "id": "id",
-                 "Status": "Status"
-             }
-         },
-         "SweptTee": {
-             "name": "SweptTee",
-             "source": "./Layers/SweptTee.shp",
-             "fields": {
-                 "Rotation": "Rotation",
-                 "UPRN": "UPRN",
-                 "Address": "Address"
-             }
-         },
-         "TobyBox": {
-             "name": "Toby Box",
-             "source": "./Layers/Toby Box.shp",
-             "fields": {
-                 "Rotation": "Rotate",
-                 "Type": "Type",
-                 "Address": "Address",
-                 "UPRN": "UPRN"
-             }
-         },
+
          "UPRN": {
              "name": "UPRN",
              "source": "./Mastermap & UPRN Data/addressbase_premium.gpkg|layername=UPRN",
