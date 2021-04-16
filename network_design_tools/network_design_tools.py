@@ -21,7 +21,6 @@
  *                                                                         *
  ***************************************************************************/
 """
-
 from qgis.PyQt.QtCore import Qt, QSettings, QTranslator, QCoreApplication, QVariant
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction, QMessageBox, QToolButton, QMenu, QTableView, QFileDialog
@@ -250,23 +249,24 @@ class NetworkDesignTools:
             callback=self.linkDC,
             parent=self.iface.mainWindow())
         self.linkDCBtn.setCheckable(True)
-
-        cableBtn = self.add_action(
+        self.cableBtn = self.add_action(
             os.path.join(icons_folder,'cable_add.png'),
             text=self.tr(u'Cable builder'),
             add_to_menu=False,
             location='Custom',
             callback=self.selectNodes,
             parent=self.iface.mainWindow())
-        cableBtn.setCheckable(True)
-        self.connectNodesTool.setAction(cableBtn)
-
+        self.cableBtn.setCheckable(True)
+        self.connectNodesTool.setAction(self.cableBtn)
+        
         #self.linkDCPolyTool.setAction(dropCableBtn)
         
         # Connect the handler for the linkDCTool click event
         self.linkDCTool.dcSelected.connect(self.selectDCObject)
         self.linkDCTool.deactivated.connect(self.resetSelectDCTool)
-
+        
+               
+        
         # Connect the handler for the connectNodesTool click event
         self.connectNodesTool.pointsClicked.connect(self.generateCable)
         self.connectNodesTool.deactivated.connect(self.resetConnectNodesTool)
@@ -721,7 +721,7 @@ class NetworkDesignTools:
 
         reply = QMessageBox.information(self.iface.mainWindow(),'Network Design Toolkit', str(cpLyr.selectedFeatureCount()) +' properties in this area.', QMessageBox.Ok)
         
-
+    
     def selectNodes(self):
         # Activate cable tool if required
         # Store snappingConfig to reset afterwards
