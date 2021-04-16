@@ -2,7 +2,6 @@ from qgis.core import QgsProject, QgsProcessingFeatureSourceDefinition, QgsFeatu
 from qgis.PyQt.QtWidgets import QMessageBox, QDialog
 import processing
 from network_design_tools import common
-from .list_dialog import ListDialog
 
 def createNodeCable(iface, startPoint, startLayerName, startFid, endPoint, endLayerName, endFid):
     layers = common.prerequisites['layers']
@@ -45,23 +44,6 @@ def createNodeCable(iface, startPoint, startLayerName, startFid, endPoint, endLa
     cableName = '{}/{}'.format(startID, endID)
 
     cableFields = layers['Cable']['fields']
-    fieldIndex = cableLyr.dataProvider().fieldNameIndex(cableFields['type'])
-    cableTypeMap = cableLyr.editorWidgetSetup(fieldIndex).config()['map']
-
-    cableTypeList = []
-    for t in cableTypeMap:
-        cableTypeList.append(list(t.keys())[0])
-
-    dlg = ListDialog(parent=iface.mainWindow())
-    dlg.setValues('Select cable type:', cableTypeList)
-    result = dlg.exec()
-    if result == QDialog.Rejected: return
-
-    val = dlg.getSelectedValue()
-    for t in cableTypeMap:
-        if val in t.keys():
-            cableType = t[val]
-            break
 
     cableLyr.startEditing() 
     try:
@@ -82,15 +64,16 @@ def createNodeCable(iface, startPoint, startLayerName, startFid, endPoint, endLa
             feat.setGeometry(c.geometry())
             feat.setAttribute(cableFields['feed'], 1) #U/G
             feat.setAttribute(cableFields['name'], cableName)
-            feat.setAttribute(cableFields['type'], cableType)
-            feat.setAttribute(cableFields['use'], 3) #Feeder
             cableLyr.addFeature(feat)
-        cableLyr.commitChanges()
+            result = iface.openFeatureForm(cableLyr, feat, False, showModal = True)
+
+        if result:
+            cableLyr.commitChanges()
     except Exception as e:
         print(e)
-        cableLyr.rollBack()
         QMessageBox.warning(iface.mainWindow(), 'Cable not created', 'Cable from {}: {} to {}: {} could not be calculated'.format(startLayerName, startID, endLayerName, endID))
     finally:
+        cableLyr.rollBack()
         QgsProject.instance().removeMapLayer(mergedDuctLyr)
         del mergedDuctLyr
         del cableLyr
