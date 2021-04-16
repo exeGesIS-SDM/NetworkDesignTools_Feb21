@@ -57,7 +57,7 @@ def createNodeCable(iface, startPoint, startLayerName, startFid, endPoint, endLa
         end = '{}, {} [{}]'.format(endPoint.x(), endPoint.y(), QgsProject.instance().crs().authid())
         result = processing.run("native:shortestpathpointtopoint", { 'DEFAULT_DIRECTION' : 2, 'DEFAULT_SPEED' : 50, 'DIRECTION_FIELD' : '', \
                         'START_POINT' : start, 'END_POINT' : end, 'INPUT' : selDuctLyr, 'OUTPUT' : 'TEMPORARY_OUTPUT', \
-                        'SPEED_FIELD' : '', 'STRATEGY' : 0, 'TOLERANCE' : 0.2, 'VALUE_BACKWARD' : '', 'VALUE_BOTH' : '', 'VALUE_FORWARD' : '' })
+                        'SPEED_FIELD' : '', 'STRATEGY' : 0, 'TOLERANCE' : 0.01, 'VALUE_BACKWARD' : '', 'VALUE_BOTH' : '', 'VALUE_FORWARD' : '' })
 
         for c in result['OUTPUT'].getFeatures():
             feat = QgsVectorLayerUtils.createFeature(cableLyr)
