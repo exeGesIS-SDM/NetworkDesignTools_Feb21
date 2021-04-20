@@ -322,7 +322,7 @@ class NetworkDesignTools:
             self.first_start = False
 
 
-    def selectDCObject(self, poleId, SNID):
+    def selectDCObject(self, poleLayerName, poleId, SNID):
         '''
         Prompt user to click on pole
         Prompt user to click on secondary node(SN) polygon
@@ -338,7 +338,6 @@ class NetworkDesignTools:
 
         layers = common.prerequisites['layers']
         bdryLayerName = layers['Boundaries']['name']
-        poleLayerName = layers['Poles']['name']
         AddressLayerName = layers['Premises']['name']
         CableLayerName = layers['Cable']['name']
 
@@ -346,7 +345,7 @@ class NetworkDesignTools:
         if bdryLyr is None:
             return
 
-        poleLyr = common.getLayerByName(self.iface, QgsProject.instance(), poleLayerName)
+        poleLyr = common.getLayerByName(self.iface, QgsProject.instance(), layers[poleLayerName]['name'])
         if poleLyr is None:
             return
 
@@ -392,11 +391,11 @@ class NetworkDesignTools:
             if cpfeat['TN'] == NULL:
                 pc.setAttribute('Cable name', cpfeat['SN'])
             else:
-                pc.setAttribute('Cable name', '{}-{}'.format(cpfeat['SN'],cpfeat['TN']))
+                pc.setAttribute('Cable name', '{}-{}'.format(cpfeat['SN'], cpfeat['TN']))
             cableLyr.dataProvider().addFeature(pc)
         cableLyr.triggerRepaint()
 
-        
+
     def UpdateAttributes(self):
         '''
             check that selected poly is a PN

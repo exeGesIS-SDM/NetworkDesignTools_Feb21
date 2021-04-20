@@ -30,7 +30,7 @@ from network_design_tools import common
 
 class SelectDCMapTool(QgsMapToolEmitPoint):
 
-    dcSelected = pyqtSignal('QgsFeatureId', 'QgsFeatureId')
+    dcSelected = pyqtSignal(str, 'QgsFeatureId', 'QgsFeatureId')
 
     def __init__(self, iface, canvas):
         """The user should select a pole object. Then select a Boundary"""
@@ -41,12 +41,13 @@ class SelectDCMapTool(QgsMapToolEmitPoint):
         self.iface = iface
         self.canvas = canvas
         # self.snapper = QgsMapCanvasSnappingUtils(self.canvas)
-        self.poleLayerName = common.prerequisites['layers']['Poles']['name']
-        self.poleLayer = None
+        self.poleLayerNames = common.prerequisites['settings']['dropCableLayers']
+        self.poleLayers = {}
         self.bndLayerName = common.prerequisites['layers']['Boundaries']['name']
         self.bndLayer = None
         self.bndFields = common.prerequisites['layers']['Boundaries']['fields']
         self.poleSelected = False
+        self.poleLayerName = ''
         self.poleId = -1
         self.bndID = -1
         self.crs = ''
@@ -78,33 +79,48 @@ class SelectDCMapTool(QgsMapToolEmitPoint):
             for bnd in self.bndLayer.getFeatures(request):
                 if bnd['Type'] == '2' or bnd['Type'] == '3': # UGSN or PMSN
                     self.bndID = bnd.id()
-                    self.dcSelected.emit(self.poleId, self.bndID)
+                    self.dcSelected.emit(self.poleLayerName, self.poleId, self.bndID)
 
             self.reset()
         else:
-
-
-            if self.poleLayer is None:
-                self.poleLayer = common.getLayerByName(self.iface, QgsProject.instance(), self.poleLayerName)
-                if self.poleLayer is None:
-                    self.deactivate()
+            if len(self.poleLayers) == 0:
+                self.initialiseLayers()
 
             point = event.mapPoint()
             request = QgsFeatureRequest(QgsRectangle(point.x()-1,point.y()-1, point.x()+1, point.y()+1))
-            # Get ID of first feature with DP type
-            for pole in self.poleLayer.getFeatures(request):
+            
+            poleLayerName, poleId = self.getFeatureByLocation(request)
+            if poleId is not None:
                 #print(pole['Use'])
                 #any pole will do
                 #if pole['Use'] == 'Carrier' or pole['Use'] == 'PMCE' or pole['Use'] == 'PMSN':
                 self.poleSelected = True
-                self.poleId = pole.id()
-                QMessageBox.information(self.iface.mainWindow(),'Network Design Toolkit', \
-                    '{0} object selected, now select an object from the {1} layer, to create cables to all properties within the area'.format(self.poleLayerName,self.bndLayerName), QMessageBox.Ok)
+                self.poleLayerName = poleLayerName
+                self.poleId = poleId
+                self.iface.messageBar().pushInfo('Network Design Toolkit', \
+                    '{0} object selected, now select an object from the {1} layer, to create cables to all properties within the area'.format(self.poleLayerName,self.bndLayerName))
                 return
 
             QMessageBox.information(self.iface.mainWindow(), 'Network Design Toolkit', \
-                'First select an object from the {} layer'.format(self.poleLayerName) , QMessageBox.Ok)
+                'First select an object from one of the Pole layers', QMessageBox.Ok)
 
+    def initialiseLayers(self):
+        for layerName in self.poleLayerNames:
+            if not layerName in self.poleLayers:
+                layer = common.getLayerByName(self.iface, QgsProject.instance(), common.prerequisites['layers'][layerName]['name'], False)
+                if layer is not None:
+                    self.poleLayers[layerName] = layer
+
+        if len(self.poleLayers) == 0:
+            self.iface.messageBar().pushInfo('Layers not open', 'None of the Pole layers are open.')
+            self.deactivate()
+
+    def getFeatureByLocation(self, request):
+        for layerName, layer in self.poleLayers.items():
+            for feat in layer.getFeatures(request):
+                return layerName, feat.id()
+        return None, None
+    
     def isZoomTool(self):
         return False
 
@@ -125,7 +141,7 @@ class ConnectNodesMapTool(QgsMapToolEmitPoint):
         self.iface = iface
         self.canvas = canvas
         self.layerParams = common.prerequisites['layers']
-        self.layerNames = ['Cabinet','Node','Joint']
+        self.layerNames = common.prerequisites['settings']['connectNodeLayers']
         self.layers = {}
         self.startPtSelected = False
         self.startLayerName = None
