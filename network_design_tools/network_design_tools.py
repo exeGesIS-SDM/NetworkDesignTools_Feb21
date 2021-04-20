@@ -42,6 +42,7 @@ from .map_tools import SelectDCMapTool, ConnectNodesMapTool
 #from .property_count_dialog import PropertyCountDialog
 # Import the code to connect nodes
 from .connect_points import createNodeCable
+from .mm_processing import MastermapProcessing
 
 class NetworkDesignTools:
     """QGIS Plugin Implementation."""
@@ -366,7 +367,7 @@ class NetworkDesignTools:
         if cpLyr is None:
             return
 
-       #get the intersecting properties
+        #get the intersecting properties
         processing.run("qgis:selectbylocation", {'INPUT':cpLyr, 'INTERSECT':tempLyr, 'METHOD':0, 'PREDICATE':[0]})
 
         message = '%s properties have been found within the SN area. Do you want to draw cables?' % (cpLyr.selectedFeatureCount())
@@ -375,43 +376,27 @@ class NetworkDesignTools:
         if reply == QMessageBox.No:
             return
 
-        MMLayerName = layers['TopoArea']['name']
-        MMLyr = common.getLayerByName(self.iface, QgsProject.instance(), MMLayerName)
-        if MMLyr is None:
-            return
+        # Initialise MastermapProcessing
+        mp = MastermapProcessing(self.iface, 'TopoArea', bdryLyr, SNID)
 
         for cpfeat in cpLyr.selectedFeatures(): #loop through the properties
-            new_cable = []
-            new_cable.append(QgsPoint(Pole.geometry().asPoint().x(),Pole.geometry().asPoint().y()))
-            new_cable.append(QgsPoint(cpfeat.geometry().asPoint().x(),cpfeat.geometry().asPoint().y()))
+            cable_pts = []
+            cable_pts.append(QgsPoint(cpfeat.geometry().asPoint()))
+            cable_pts.append(QgsPoint(Pole.geometry().asPoint()))
+
+            new_cable = mp.clipCableByBuilding(cpfeat.geometry(), QgsGeometry.fromPolyline(cable_pts))
 
             pc = QgsVectorLayerUtils.createFeature(cableLyr)
-            pc.setGeometry(QgsGeometry.fromPolyline(new_cable))
+            pc.setGeometry(new_cable)
             pc.setAttribute('Feed', '2') #Aerial
             if cpfeat['TN'] == NULL:
                 pc.setAttribute('Cable name', cpfeat['SN'])
             else:
                 pc.setAttribute('Cable name', '{}-{}'.format(cpfeat['SN'],cpfeat['TN']))
             cableLyr.dataProvider().addFeature(pc)
-            cableLyr.triggerRepaint()
+        cableLyr.triggerRepaint()
 
-            #cut out the bit of cable that falls within the mastermap polygon associated with this property
-            #todo
-            #get the mastermap geom
-
-            #tempPropLyr = QgsVectorLayer("Polygon?crs=EPSG:27700", "Temp_Boundary", "memory")
-            #tempPropLyr.dataProvider().addFeature(cpfeat)
-
-            #processing.run("qgis:selectbylocation", {'INPUT':MMLyr, 'INTERSECT':tempPropLyr, 'METHOD':0, 'PREDICATE':[0]})
-            #MMFeatures = MMLyr.selectedFeatures
-
-            #pc.setGeometry(QgsGeometry.fromPolyline(new_cable))
-            #pc.QgsGeometry
-            #cableLyr.dataProvider().addFeature(pc)
-
-
-
-
+        
     def UpdateAttributes(self):
         '''
             check that selected poly is a PN
@@ -804,7 +789,7 @@ class NetworkDesignTools:
             if self.cableToolButton.defaultAction().text() != self.aerialCableBtn.text():
                 self.cableToolButton.setDefaultAction(self.aerialCableBtn)
         if not self.cableToolButton.isDown():
-                self.cableToolButton.setDown(True)
+            self.cableToolButton.setDown(True)
 
         if not self.connectNodesTool.isActive():
             self.iface.mapCanvas().setMapTool(self.connectNodesTool)
