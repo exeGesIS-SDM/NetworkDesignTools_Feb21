@@ -32,7 +32,6 @@
         },
         "BillofQuantities": {
             "name": "BillofQuantities",
-            "source": "D:/Development/NetworkDesignTools_Feb21/BOQ.csv",
             "stats": {
                     "Stat0": {
                         "Title": "Premises FED total",
@@ -51,23 +50,38 @@
                     "Stat2": {
                         "Title": "Nodes",
                         "Layer": "Nodes",
-                        "Field": "Use",
-                        "SummaryType": "Count",
-                        "LUT":"{ “map”: { 1: “one”, 2: “two”, 3: “three” } } "
+                        "Calculation0":{"Criteria": "Use = 1",  "Title": "UGPN" },
+                        "Calculation1":{"Criteria": "Use = 6 AND Splitters = 1",  "Title": "MSN 1x1:8" },
+                        "Calculation2":{"Criteria": "Use = 6 AND Splitters = 2",  "Title": "MSN 2x1:8" },
+                        "Calculation3":{"Criteria": "Use = 6 AND Splitters = 3",  "Title": "MSN 3x1:8" },
+                        "SummaryType": "Count"
                     },
                 
                     "Stat3": {
-                        "Title": "BT Pole",
+                        "Title": "Poles",
                         "Layer": "BT Pole",
-                        "Field": "Use",
-                        "SummaryType": "Count"  
+                        "Calculation0":{"Criteria": "POLE_CLASS = 'L'",  "Title": "8m Poles Light" },
+                        "Calculation1":{"Criteria": "POLE_CLASS = 'M'",  "Title": "8m Poles Medium" },
+                        "Calculation2":{"Criteria": "POLE_CLASS IS NULL",  "Title": "8m Poles Other" }
                     },
                 
                     "Stat4": {
-                        "Title": "BT Duct",
-                        "Layer": "BT Duct",
-                        "Field": "Type_Name",
-                        "SummaryType": "Count"  
+                        "Title": "New Civils",
+                        "Layer": "Duct",
+                        "Calculation0":{"Criteria": "'7/3.5mm' IS NOT NULL AND Surface = 1",  "Title": "Narrow trench in verge" },
+                        "Calculation1":{"Criteria": "'7/3.5mm' IS NOT NULL AND Surface = 2 AND Material = 2",  "Title": "Narrow trench in FW- Unmade" },
+                        "Calculation2":{"Criteria": "'7/3.5mm' IS NOT NULL AND Surface = 2 AND Material = 3",  "Title": "Narrow trench in FW- Tarmac" },
+                        "Calculation3":{"Criteria": "'7/3.5mm' IS NOT NULL AND Surface = 2 AND Material = 4",  "Title": "Narrow trench in FW- Concrete" },
+                        "Calculation4":{"Criteria": "'7/3.5mm' IS NOT NULL AND Surface = 2 AND Material = 5",  "Title": "Narrow trench in FW- Modular" },
+                        "Calculation5":{"Criteria": "'7/3.5mm' IS NOT NULL AND Surface = 3 AND Material = 2",  "Title": "Narrow trench in CW- Unmade" }, 
+                        "Calculation6":{"Criteria": "'7/3.5mm' IS NOT NULL AND Surface = 3 AND Material = 3",  "Title": "Narrow trench in CW- Tarmac" },
+                        "Calculation7":{"Criteria": "'7/3.5mm' IS NOT NULL AND Surface = 3 AND Material = 4",  "Title": "Narrow trench in CW- Concrete" },
+                        "Calculation8":{"Criteria": "'7/3.5mm' IS NOT NULL AND Surface = 3 AND Material = 5",  "Title": "Narrow trench in CW- Modular" }, 
+                        "Calculation9":{"Criteria": "'110mm' IS NOT NULL AND Surface = 3 AND Material = 2",  "Title": "Traditional trench in CW- Unmade" },
+                        "Calculation10":{"Criteria": "'110mm' IS NOT NULL AND Surface = 3 AND Material = 3",  "Title": "Traditional trench in CW- Tarmac" },
+                        "Calculation11":{"Criteria": "'110mm' IS NOT NULL AND Surface = 3 AND Material = 4",  "Title": "Traditional trench in CW- Concrete" }, 
+                        "Calculation12":{"Criteria": "'110mm' IS NOT NULL AND Surface = 3 AND Material = 5",  "Title": "Traditional trench in CW- Modular" },
+                        "Calculation13":{"Criteria": "Surface = 4",  "Title": "Quantity of road crossings" }
                     },
                 
                     "Stat5": {
@@ -75,7 +89,19 @@
                         "Layer": "BT Chambers",
                         "Field": "Category_N",
                         "SummaryType": "Count"  
+                    },
+                    "Stat6": {
+                        "Title": "Cable Quantities",
+                        "Layer": "Cable",
+                        "Calculation0":{"Criteria": "Feed = 1 AND Type = 6",  "Title": "144F Cable U/G" },
+                        "Calculation1":{"Criteria": "Feed = 1 AND Type = 5",  "Title": "96F Cable U/G" },
+                        "Calculation2":{"Criteria": "Feed = 1 AND Type = 4",  "Title": "48F Cable U/G" },
+                        "Calculation3":{"Criteria": "Feed = 2 AND Type = 4",  "Title": "48F Cable Aerial" },
+                        "Calculation4":{"Criteria": "Feed = 1 AND Type = 2",  "Title": "12F Cable U/G" },
+                        "Calculation5":{"Criteria": "Feed = 1 AND Type = 1",  "Title": "1F Drop Cable U/G" },
+                        "Calculation6":{"Criteria": "Feed = 2 AND Type = 1",  "Title": "1F Drop Cable Aerial" }
                     }
+                    
                 }
             },
         "Poles": {

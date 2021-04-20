@@ -356,19 +356,37 @@ class NetworkDesignTools:
         if reply == QMessageBox.No:
             return
 
+        MMLayerName = layers['TopoArea']['name']
+        MMLyr = common.getLayerByName(self.iface, QgsProject.instance(), MMLayerName)
+
         for cpfeat in cpLyr.selectedFeatures(): #loop through the properties
             new_cable = []
             new_cable.append(QgsPoint(Pole.geometry().asPoint().x(),Pole.geometry().asPoint().y()))
             new_cable.append(QgsPoint(cpfeat.geometry().asPoint().x(),cpfeat.geometry().asPoint().y()))
 
             pc = QgsVectorLayerUtils.createFeature(cableLyr)
-            #cut out the bit of cable that falls within the mastermap polygon associated with this property
-            #todo
-            
             pc.setGeometry(QgsGeometry.fromPolyline(new_cable))
+            #if cpfeat['TN'] == None:
+            pc.setAttribute('Cable name', cpfeat['SN'])
+            #else: ??syntax error??
+            #    pc.setAttribute('Cable name', '{}-{}'.format(cpfeat['SN'],cpfeat['TN']) 
+
             
             cableLyr.dataProvider().addFeature(pc)
 
+            #cut out the bit of cable that falls within the mastermap polygon associated with this property
+            #todo
+            #get the mastermap geom
+            
+            #tempPropLyr = QgsVectorLayer("Polygon?crs=EPSG:27700", "Temp_Boundary", "memory")
+            #tempPropLyr.dataProvider().addFeature(cpfeat)
+
+            #processing.run("qgis:selectbylocation", {'INPUT':MMLyr, 'INTERSECT':tempPropLyr, 'METHOD':0, 'PREDICATE':[0]})
+            #MMFeatures = MMLyr.selectedFeatures
+            
+            #pc.setGeometry(QgsGeometry.fromPolyline(new_cable))
+            #pc.QgsGeometry
+            #cableLyr.dataProvider().addFeature(pc)
 
         
 
@@ -534,12 +552,37 @@ class NetworkDesignTools:
                 except:
                     fldName = ""
 
-                if fldName == '': #a straight count
-                    ans = writeToCSV(self.iface, csvFileName,{'Item':searchName, 'Quantity': str(cpLyr.selectedFeatureCount())}, isFirst)
-                    isFirst = False
+                if fldName == '': #a straight count, or some Calculations ...
+                    try:
+                        srchName = layers['BillofQuantities']['stats']['Stat'+str(i)]['Calculation0']['Title']
+                    except:
+                        srchName = ""
+
+                    if srchName == '': #a straight count
+                        ans = common.writeToCSV(self.iface, csvFileName,{'Item':searchName, 'Quantity': str(cpLyr.selectedFeatureCount())}, isFirst)
+                        isFirst = False
+                    else:
+                        j=0
+                        ans = common.writeToCSV(self.iface, csvFileName,{'Item':searchName, 'Quantity': ''}, isFirst)
+                        isFirst = False
+
+                        while srchName != '':
+                            srchCriteria = layers['BillofQuantities']['stats']['Stat'+str(i)]['Calculation'+str(j)]['Criteria']
+                            #print (srchName + ' ' + srchCriteria)
+
+                            processing.run("qgis:selectbyexpression", {'INPUT':cpLyr, 'EXPRESSION':srchCriteria, 'METHOD':0})
+
+                            ans = common.writeToCSV(self.iface, csvFileName,{'Item': srchName, 'Quantity': str(cpLyr.selectedFeatureCount())}, isFirst)
+
+                            j+=1
+                            try:
+                                srchName = layers['BillofQuantities']['stats']['Stat'+str(i)]['Calculation'+str(j)]['Title']
+                            except:
+                                srchName = ""
+
                 else: #group by the field name, write each value+count to the csv 
                     #processing.run("qgis:saveselectedfeatures",cpLyr,'xgtemp')
-                    ans = writeToCSV(self.iface, csvFileName,{'Item':searchName, 'Quantity': ''}, isFirst)
+                    ans = common.writeToCSV(self.iface, csvFileName,{'Item':searchName, 'Quantity': ''}, isFirst)
                     isFirst = False
 
                    # tempLyr2 = QgsVectorLayer("Point?crs=EPSG:27700", "temp", "memory")
@@ -570,7 +613,7 @@ class NetworkDesignTools:
                     for x, y in aDict.items():
                         #print (x)
                         #print (aDict[x])
-                        ans = writeToCSV(self.iface, csvFileName,{'Item': x, 'Quantity': y}, isFirst)
+                        ans = common.writeToCSV(self.iface, csvFileName,{'Item': x, 'Quantity': y}, isFirst)
                         isFirst = False
 
             i+=1
