@@ -12,43 +12,7 @@ def initPrerequisites(iface):
     # Initialise so always available 
     prerequisites = {}
     
-    # Web Service implementation
-    """
-    config = cp.ConfigParser()
-    _location_ = os.path.join(os.path.dirname(__file__), 'fibre_toolkit.ini') 
-    config.read(_location_)
-    url = config['URLs'].get('ValidationService','')
-    
-    # Get validation parameters
-    params = {}
-    params['username'] = os.getlogin()
-
-    params['macaddress'] = ':'.join(['{:02x}'.format((uuid.getnode() >> ele) & 0xff)
-    for ele in range(0,8*6,8)][::-1])
-    
-    # Read version from metadata.txt
-    metadata = cp.ConfigParser()
-    _location_ = os.path.join(os.path.dirname(__file__), 'metadata.txt')
-    metadata.read(_location_)
-    params['version'] = metadata['general'].get('version','')
-        
-    if url != '':
-        try:
-            response = requests.post(url, json = params)
-            prerequisites = response.json()
-        except:
-            QMessageBox.critical(iface.mainWindow(), 'Invalid JSON', 'The response from the server was not valid json format:\n{}'.format(response.text))
-    else:
-        QMessageBox.critical(iface.mainWindow(), 'Invalid URL', 'The URL for the ValidationService is not configured in the URLs section of fibre_toolkit.ini')
-        return
-    
-    # Show message if one of the parameters was invalid and reset prerequisites
-    if 'message' in prerequisites:
-        QMessageBox.critical(iface.mainWindow(), 'Parameters Invalid', prerequisites['message'])
-        prerequisites = {}
-    """
-
-    # Temporary file implementation
+    # File implementation
     json_path = os.path.join(os.path.dirname(__file__), 'prerequisites.json') 
     
     try:
