@@ -75,7 +75,7 @@ def writeToCSV(iface, csvfilename, writeThis, isFirstRow = False):
     else:
         attrib = 'a'
     with open(csvfilename,attrib, newline='') as csvfile:
-        fieldnames = ['Item', 'Quantity']
+        fieldnames = ['Item', 'Buildable', 'In LOC', 'Quantity']
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         if isFirstRow:
             writer.writeheader()
