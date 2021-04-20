@@ -516,7 +516,12 @@ class NetworkDesignTools:
             QMessageBox.critical(self.iface.mainWindow(), errTitle, errMsg)
             return
 
-        if bdryLyr.selectedFeatureCount() > 1:
+        errMsg = "You must select a single polygon from the " + bdryLayerName + " layer."
+        if bdryLyr.selectedFeatureCount() == 0:
+            errTitle = "No polygons selected"
+            QMessageBox.critical(self.iface.mainWindow(), errTitle, errMsg)
+            return
+        elif bdryLyr.selectedFeatureCount() > 1:
             errTitle = "Multiple polygons selected"
             QMessageBox.critical(self.iface.mainWindow(), errTitle, errMsg)
             return
