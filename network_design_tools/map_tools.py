@@ -21,23 +21,21 @@
 """
 
 from PyQt5.QtCore import pyqtSignal, Qt
-from PyQt5.QtGui import QCursor, QPixmap, QColor
-from PyQt5.QtWidgets import QApplication, QMessageBox
+from PyQt5.QtWidgets import QMessageBox
 
-from qgis.core import QgsProject, QgsWkbTypes, QgsFeatureRequest, QgsRectangle
-from qgis.gui import QgsMapToolEmitPoint, QgsMapToolEdit, QgsRubberBand, QgsMapCanvasSnappingUtils
+from qgis.core import QgsProject, QgsFeatureRequest, QgsRectangle
+from qgis.gui import QgsMapToolEmitPoint
 from network_design_tools import common
 
 
 class SelectDCMapTool(QgsMapToolEmitPoint):
-        
-    dcSelected = pyqtSignal('QgsFeatureId', 'QgsFeatureId')
-    
-    def __init__(self, iface, canvas):
-        QgsMapToolEmitPoint.__init__(self, canvas)
 
-        """ The user should select a pole object. Then select a Boundary  """
-         
+    dcSelected = pyqtSignal('QgsFeatureId', 'QgsFeatureId')
+
+    def __init__(self, iface, canvas):
+        """The user should select a pole object. Then select a Boundary"""
+
+        QgsMapToolEmitPoint.__init__(self, canvas)
 
         self.setCursor(Qt.CrossCursor)
         self.iface = iface
@@ -52,23 +50,23 @@ class SelectDCMapTool(QgsMapToolEmitPoint):
         self.poleId = -1
         self.bndID = -1
         self.crs = ''
-        self.reset()  
+        self.reset()
 
     def reset(self):
         self.poleSelected = False
         self.poleId = -1
-                
+
     def canvasReleaseEvent(self, event):
         # Get the click and emit the point in source crs
 
         if self.poleSelected:
 
             self.poleSelected = False
-            
+
             # Get the click and check they clicked on a SN
-            if self.bndLayer == None:
+            if self.bndLayer is None:
                 self.bndLayer = common.getLayerByName(self.iface, QgsProject.instance(), self.bndLayerName)
-                if self.bndLayer != None:
+                if self.bndLayer is not None:
                     self.crs = self.bndLayer.crs().authid()
                 else:
                     self.deactivate()
@@ -76,19 +74,19 @@ class SelectDCMapTool(QgsMapToolEmitPoint):
             point = event.mapPoint()
             request = QgsFeatureRequest(QgsRectangle(point.x()-1,point.y()-1, point.x()+1, point.y()+1))
             # Get ID of the bound, of type SN
-            
+
             for bnd in self.bndLayer.getFeatures(request):
                 if bnd['Type'] == '2' or bnd['Type'] == '3': # UGSN or PMSN
                     self.bndID = bnd.id()
                     self.dcSelected.emit(self.poleId, self.bndID)
-            
+
             self.reset()
         else:
 
- 
-            if self.poleLayer == None:
+
+            if self.poleLayer is None:
                 self.poleLayer = common.getLayerByName(self.iface, QgsProject.instance(), self.poleLayerName)
-                if self.poleLayer == None:
+                if self.poleLayer is None:
                     self.deactivate()
 
             point = event.mapPoint()
@@ -100,23 +98,25 @@ class SelectDCMapTool(QgsMapToolEmitPoint):
                 #if pole['Use'] == 'Carrier' or pole['Use'] == 'PMCE' or pole['Use'] == 'PMSN':
                 self.poleSelected = True
                 self.poleId = pole.id()
-                reply = QMessageBox.information(self.iface.mainWindow(),'Network Design Toolkit', '{0} object selected, now select an object from the {1} layer, to create cables to all properties within the area'.format(self.poleLayerName,self.bndLayerName) , QMessageBox.Ok)
+                QMessageBox.information(self.iface.mainWindow(),'Network Design Toolkit', \
+                    '{0} object selected, now select an object from the {1} layer, to create cables to all properties within the area'.format(self.poleLayerName,self.bndLayerName), QMessageBox.Ok)
                 return
-    
-            reply = QMessageBox.information(self.iface.mainWindow(),'Network Design Toolkit', 'First select an object from the {} layer'.format(self.poleLayerName) , QMessageBox.Ok)
+
+            QMessageBox.information(self.iface.mainWindow(), 'Network Design Toolkit', \
+                'First select an object from the {} layer'.format(self.poleLayerName) , QMessageBox.Ok)
 
     def isZoomTool(self):
         return False
-    
+
     def isTransient(self):
         return False
-      
+
     def isEditTool(self):
         return False
 
 
 class ConnectNodesMapTool(QgsMapToolEmitPoint):
-    
+
     pointsClicked = pyqtSignal('QgsPointXY', str, 'QgsFeatureId', 'QgsPointXY', str, 'QgsFeatureId')
 
     def __init__(self, iface, canvas):
@@ -127,7 +127,10 @@ class ConnectNodesMapTool(QgsMapToolEmitPoint):
         self.layerParams = common.prerequisites['layers']
         self.layerNames = ['Cabinet','Node','Joint']
         self.layers = {}
-        self.reset()
+        self.startPtSelected = False
+        self.startLayerName = None
+        self.startFid = None
+        self.startPt = None
 
     def deactivate(self):
         self.reset()
@@ -148,7 +151,7 @@ class ConnectNodesMapTool(QgsMapToolEmitPoint):
                     self.initialiseLayers()
 
                 point = event.mapPoint()
-                request = QgsFeatureRequest(QgsRectangle(point.x()-1,point.y()-1, point.x()+1, point.y()+1))               
+                request = QgsFeatureRequest(QgsRectangle(point.x()-1,point.y()-1, point.x()+1, point.y()+1))
                 for layerName, layer in self.layers.items():
                     for feat in layer.getFeatures(request):
                         self.startLayerName = layerName
@@ -189,7 +192,9 @@ class ConnectNodesMapTool(QgsMapToolEmitPoint):
     def initialiseLayers(self):
         for layerName in self.layerNames:
             if not layerName in self.layers:
-                self.layers[layerName] = common.getLayerByName(self.iface, QgsProject.instance(), self.layerParams[layerName]['name'], False)
+                layer = common.getLayerByName(self.iface, QgsProject.instance(), self.layerParams[layerName]['name'], False)
+                if layer is not None:
+                    self.layers[layerName] = layer
 
         if len(self.layers) == 0:
             self.iface.messageBar().pushInfo('Layers not open', 'None of the Cabinet, Node or Joint layers are open.')

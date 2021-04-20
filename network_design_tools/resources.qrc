@@ -7,5 +7,6 @@
         <file>icons/graphics-tablet.png</file>
         <file>icons/node_add.png</file>
         <file>icons/cable_add.png</file>
+        <file>icons/aerial_cable_add.png</file>
     </qresource>
 </RCC>
