@@ -159,7 +159,7 @@ class ConnectNodesMapTool(QgsMapToolEmitPoint):
                     self.startPt = point
                     self.startPtSelected = True
                 else:
-                    self.iface.messageBar().pushInfo('No Infrastructure', 'No Cabinet, PFDP, DP, IBT or Joint at that location')
+                    self.iface.messageBar().pushInfo('No Infrastructure', 'No Cabinet, Node or Joint at that location')
             else:
                 point = event.mapPoint()
                 request = QgsFeatureRequest(QgsRectangle(point.x()-1,point.y()-1, point.x()+1, point.y()+1))
@@ -201,93 +201,5 @@ class ConnectNodesMapTool(QgsMapToolEmitPoint):
     def isTransient(self):
         return False
 
-    def isEditTool(self):
-        return False 
-class ConnectNodesMapTool(QgsMapToolEmitPoint):
-        
-    pointsClicked = pyqtSignal('QgsPointXY', str, 'QgsFeatureId', 'QgsPointXY', str, 'QgsFeatureId')
-    
-    def __init__(self, iface, canvas):
-        QgsMapToolEmitPoint.__init__(self, canvas)
-        self.setCursor(Qt.CrossCursor)
-        self.iface = iface
-        self.canvas = canvas
-        self.layerParams = common.prerequisites['layers']
-        self.layerNames = ['Cabinet','Node','Joint']
-        self.layers = {}
-        self.reset()
-
-    def deactivate(self):
-        self.reset()
-        QgsMapToolEmitPoint.deactivate(self)
-
-    def reset(self):
-        self.startPtSelected = False
-        self.startLayerName = None
-        self.startFid = None
-        self.startPt = None
-        
-    def canvasReleaseEvent(self, event):
-        if event.button() == Qt.LeftButton:
-            """ Generate Cable """
-            # Get the click and emit the point in source crs
-            if not self.startPtSelected:
-                if len(self.layers) == 0:
-                    self.initialiseLayers()
-
-                point = event.mapPoint()
-                request = QgsFeatureRequest(QgsRectangle(point.x()-1,point.y()-1, point.x()+1, point.y()+1))               
-                for layerName, layer in self.layers.items():
-                    for feat in layer.getFeatures(request):
-                        self.startLayerName = layerName
-                        self.startFid = feat.id()
-                        break
-
-                if self.startFid is not None:
-                    self.startPt = point
-                    self.startPtSelected = True
-                else:
-                    self.iface.messageBar().pushInfo('No Infrastructure', 'No Cabinet, PFDP, DP, IBT or Joint at that location')
-            else:
-                point = event.mapPoint()
-                request = QgsFeatureRequest(QgsRectangle(point.x()-1,point.y()-1, point.x()+1, point.y()+1))
-                
-                endFid = None
-                for layerName, layer in self.layers.items():
-                    for feat in layer.getFeatures(request):
-                        endLayerName = layerName
-                        endFid = feat.id()
-                        break
-
-                if endFid is not None:
-                    startPt = self.startPt
-                    startLayerName = self.startLayerName
-                    startFid = self.startFid
-                    self.startPt = point
-
-                    # Initialise start point for next cable
-                    self.startLayerName = endLayerName
-                    self.startFid = endFid
-                    self.pointsClicked.emit(startPt, startLayerName, startFid, point, endLayerName, endFid)
-                else:
-                    self.iface.messageBar().pushInfo('No Infrastructure', 'No Cabinet, Node or Joint at that location')
-        elif event.button() == Qt.RightButton:
-            self.reset()
-
-    def initialiseLayers(self):
-        for layerName in self.layerNames:
-            if not layerName in self.layers:
-                self.layers[layerName] = common.getLayerByName(self.iface, QgsProject.instance(), self.layerParams[layerName]['name'], False)
-        
-        if len(self.layers) == 0:
-            self.iface.messageBar().pushInfo('Layers not open', 'None of the Cabinet, Node or Joint layers are open.')
-            self.deactivate()
-
-    def isZoomTool(self):
-        return False
-    
-    def isTransient(self):
-        return False
-      
     def isEditTool(self):
         return False
