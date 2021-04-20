@@ -34,7 +34,7 @@ from .resources import *
 from network_design_tools import common
 #from .common import writeToCSV
 # Import the code for the point tool
-from .map_tools import SelectDCpolyTool, ConnectNodesMapTool
+from .map_tools import SelectDCMapTool, ConnectNodesMapTool
 # Import the code for the dialog
 from .property_count_dialog import PropertyCountDialog
 # Import the code to connect nodes
@@ -75,7 +75,7 @@ class NetworkDesignTools:
         # initialize freeHandTools
         self.activeTool = None
         #self.pointTool = PointMapTool(self.iface.mapCanvas())
-        self.linkDCPolyTool = SelectDCpolyTool(self.iface, self.iface.mapCanvas())
+        self.linkDCTool = SelectDCMapTool(self.iface, self.iface.mapCanvas())
         self.connectNodesTool = ConnectNodesMapTool(self.iface, self.iface.mapCanvas())
         #self.movePointTool = MovePointMapTool(self.iface, self.iface.mapCanvas(), 'Toby Box', None)
         #self.CountPropertiesTool = SelectCPTool(self.iface, self.iface.mapCanvas())
@@ -241,29 +241,31 @@ class NetworkDesignTools:
             callback=self.UpdateAttributes,
             parent=self.iface.mainWindow())
 
-        dropCableBtn = self.add_action(
+        self.linkDCBtn = self.add_action(
             os.path.join(icons_folder,'node_add.png'),
             text=self.tr(u'Drop cable builder'),
             add_to_menu=False,
             location='Custom',
-            callback=self.selectDCpolyObject,
+            callback=self.linkDC,
             parent=self.iface.mainWindow())
-        dropCableBtn.setCheckable(True)
-        self.linkDCPolyTool.setAction(dropCableBtn)
-             
-        cableBtn = self.add_action(
+        self.linkDCBtn.setCheckable(True)
+        self.cableBtn = self.add_action(
             os.path.join(icons_folder,'cable_add.png'),
             text=self.tr(u'Cable builder'),
             add_to_menu=False,
             location='Custom',
             callback=self.selectNodes,
             parent=self.iface.mainWindow())
-        cableBtn.setCheckable(True)
-        self.connectNodesTool.setAction(cableBtn)
+        self.cableBtn.setCheckable(True)
+        self.connectNodesTool.setAction(self.cableBtn)
+        
+        #self.linkDCPolyTool.setAction(dropCableBtn)
+        
+        # Connect the handler for the linkDCTool click event
+        self.linkDCTool.dcSelected.connect(self.selectDCObject)
+        self.linkDCTool.deactivated.connect(self.resetSelectDCTool)
+        
                
-        # Connect the handler for the pointTool click event
-        self.linkDCPolyTool.canvasClicked.connect(self.selectDCpolyObject)
-        self.linkDCPolyTool.deactivated.connect(self.resetDCpolyTool)
         
         # Connect the handler for the connectNodesTool click event
         self.connectNodesTool.pointsClicked.connect(self.generateCable)
@@ -275,7 +277,7 @@ class NetworkDesignTools:
 
 
     def closePlugin(self):
-        qgis.utils.unloadPlugin('fibre_toolkit')
+        qgis.utils.unloadPlugin('network_design_tools')
 
     def unload(self):
         """Removes the plugin menu item and icon from QGIS GUI."""
@@ -284,6 +286,11 @@ class NetworkDesignTools:
                 self.tr(u'&Network Design Tools'),
                 action)
             self.iface.removeToolBarIcon(action)
+
+        # disconnect the link DP tool handler
+        self.linkDCTool.dcSelected.disconnect(self.selectDCObject)
+        self.linkDCTool.deactivated.disconnect(self.resetSelectDCTool)
+        del self.linkDCTool
 
         # disconnect the auto cable tool handler
         self.connectNodesTool.pointsClicked.disconnect(self.generateCable)
@@ -296,28 +303,11 @@ class NetworkDesignTools:
     def run(self):
         """Run method that performs all the real work"""
 
-        # Create the dialog with elements (after translation) and keep reference
-        # Only create GUI ONCE in callback, so that it will only load when the plugin is started
         if self.first_start == True:
             self.first_start = False
-            #self.dlg = NetworkDesignToolsDialog()
+     
 
-        # show the dialog
-        #self.dlg.show()
-        # Run the dialog event loop
-        #result = self.dlg.exec_()
-        # See if OK was pressed
-        #if result:
-            # Do something useful here - delete the line containing pass and
-            # substitute with your code.
-            #pass
-
-
-    def linkDP(self):
-        pass
- 
-
-    def BuildDropCable(self):
+    def selectDCObject(self, poleId, SNID):
         '''
         Prompt user to click on pole
         Prompt user to click on secondary node(SN) polygon
@@ -331,44 +321,75 @@ class NetworkDesignTools:
         Populate the cable fields
         '''
 
-        """ The user should already have a pole object selected. Ensure 
-        this is the case and then send the geometry to the main 
-        function. """
-
         layers = common.prerequisites['layers']
-        poleLyrname = layers['Poles']['name']
-        poleLyr = common.getLayerByName(self.iface, QgsProject.instance(), poleLyrname, True)
+        bdryLayerName = layers['Boundaries']['name']
+        poleLayerName = layers['Poles']['name']
+        AddressLayerName = layers['Premises']['name']
+        CableLayerName = layers['Cable']['name']
+
+        bdryLyr = common.getLayerByName(self.iface, QgsProject.instance(), bdryLayerName)
+        if bdryLyr == None: return
+
+        poleLyr = common.getLayerByName(self.iface, QgsProject.instance(), poleLayerName)
         if poleLyr == None: return
+
+        for feat in poleLyr.getFeatures(QgsFeatureRequest(poleId)):
+            Pole = feat
+
+        for feat in bdryLyr.getFeatures(QgsFeatureRequest(SNID)):
+            bdryFeat = feat
+
+        cableLyr = common.getLayerByName(self.iface, QgsProject.instance(), CableLayerName)
+        if cableLyr == None: return
+
+        tempLyr = QgsVectorLayer("Polygon?crs=EPSG:27700", "Temp_Boundary", "memory")
+        tempLyr.dataProvider().addFeature(bdryFeat)
+
+        cpLyr = common.getLayerByName(self.iface, QgsProject.instance(), AddressLayerName, True)
+
+       #get the intersecting properties
+        processing.run("qgis:selectbylocation", {'INPUT':cpLyr, 'INTERSECT':tempLyr, 'METHOD':0, 'PREDICATE':[0]})
+ 
+        message = '%s properties have been found within the SN area. Do you want to draw cables?' % (cpLyr.selectedFeatureCount())
+        #print(message)
+        reply = QMessageBox.question(self.iface.mainWindow(), 'Create Cables', message, QMessageBox.Yes, QMessageBox.No)
+        if reply == QMessageBox.No:
+            return
+
+        MMLayerName = layers['TopoArea']['name']
+        MMLyr = common.getLayerByName(self.iface, QgsProject.instance(), MMLayerName)
+
+        for cpfeat in cpLyr.selectedFeatures(): #loop through the properties
+            new_cable = []
+            new_cable.append(QgsPoint(Pole.geometry().asPoint().x(),Pole.geometry().asPoint().y()))
+            new_cable.append(QgsPoint(cpfeat.geometry().asPoint().x(),cpfeat.geometry().asPoint().y()))
+
+            pc = QgsVectorLayerUtils.createFeature(cableLyr)
+            pc.setGeometry(QgsGeometry.fromPolyline(new_cable))
+            #if cpfeat['TN'] == None:
+            pc.setAttribute('Cable name', cpfeat['SN'])
+            #else: ??syntax error??
+            #    pc.setAttribute('Cable name', '{}-{}'.format(cpfeat['SN'],cpfeat['TN']) 
+
+            
+            cableLyr.dataProvider().addFeature(pc)
+
+            #cut out the bit of cable that falls within the mastermap polygon associated with this property
+            #todo
+            #get the mastermap geom
+            
+            #tempPropLyr = QgsVectorLayer("Polygon?crs=EPSG:27700", "Temp_Boundary", "memory")
+            #tempPropLyr.dataProvider().addFeature(cpfeat)
+
+            #processing.run("qgis:selectbylocation", {'INPUT':MMLyr, 'INTERSECT':tempPropLyr, 'METHOD':0, 'PREDICATE':[0]})
+            #MMFeatures = MMLyr.selectedFeatures
+            
+            #pc.setGeometry(QgsGeometry.fromPolyline(new_cable))
+            #pc.QgsGeometry
+            #cableLyr.dataProvider().addFeature(pc)
+
         
-        selectedLyr = self.iface.mapCanvas().currentLayer()
 
-        if bdryLyr == None:
-            return
-
-        if bdryLyr.name() != bdryLayerName:
-            errMsg = "You must select a polygon from the " + bdryLayerName + " layer."
-            errTitle = 'Wrong layer selected: ' + bdryLyr.name()
-            QMessageBox.critical(self.iface.mainWindow(), errTitle, errMsg)
-            return
-
-        if bdryLyr.selectedFeatureCount() > 1:
-            errMsg = "You must select a single polygon from the " + bdryLayerName + " layer."
-            errTitle = "Multiple polygons selected"
-            QMessageBox.critical(self.iface.mainWindow(), errTitle, errMsg)
-            return
-
-        layers = common.prerequisites['layers']
-        poleLyrname = layers['Poles']['name']
-
-        poleLyr = common.getLayerByName(self.iface, QgsProject.instance(), poleLyrname, True)
-        if poleLyr == None: return
-
-        self.iface.setActiveLayer(poleLyr)
-
-        QMessageBox.information(self.iface.mainWindow(),'Network Design Toolkit', 'Select a pole on the {} layer'.format(poleLyrname))
-
-
-        pass
 
     def UpdateAttributes(self):
         '''
@@ -531,12 +552,37 @@ class NetworkDesignTools:
                 except:
                     fldName = ""
 
-                if fldName == '': #a straight count
-                    ans = writeToCSV(self.iface, csvFileName,{'Item':searchName, 'Quantity': str(cpLyr.selectedFeatureCount())}, isFirst)
-                    isFirst = False
+                if fldName == '': #a straight count, or some Calculations ...
+                    try:
+                        srchName = layers['BillofQuantities']['stats']['Stat'+str(i)]['Calculation0']['Title']
+                    except:
+                        srchName = ""
+
+                    if srchName == '': #a straight count
+                        ans = common.writeToCSV(self.iface, csvFileName,{'Item':searchName, 'Quantity': str(cpLyr.selectedFeatureCount())}, isFirst)
+                        isFirst = False
+                    else:
+                        j=0
+                        ans = common.writeToCSV(self.iface, csvFileName,{'Item':searchName, 'Quantity': ''}, isFirst)
+                        isFirst = False
+
+                        while srchName != '':
+                            srchCriteria = layers['BillofQuantities']['stats']['Stat'+str(i)]['Calculation'+str(j)]['Criteria']
+                            #print (srchName + ' ' + srchCriteria)
+
+                            processing.run("qgis:selectbyexpression", {'INPUT':cpLyr, 'EXPRESSION':srchCriteria, 'METHOD':0})
+
+                            ans = common.writeToCSV(self.iface, csvFileName,{'Item': srchName, 'Quantity': str(cpLyr.selectedFeatureCount())}, isFirst)
+
+                            j+=1
+                            try:
+                                srchName = layers['BillofQuantities']['stats']['Stat'+str(i)]['Calculation'+str(j)]['Title']
+                            except:
+                                srchName = ""
+
                 else: #group by the field name, write each value+count to the csv 
                     #processing.run("qgis:saveselectedfeatures",cpLyr,'xgtemp')
-                    ans = writeToCSV(self.iface, csvFileName,{'Item':searchName, 'Quantity': ''}, isFirst)
+                    ans = common.writeToCSV(self.iface, csvFileName,{'Item':searchName, 'Quantity': ''}, isFirst)
                     isFirst = False
 
                    # tempLyr2 = QgsVectorLayer("Point?crs=EPSG:27700", "temp", "memory")
@@ -567,7 +613,7 @@ class NetworkDesignTools:
                     for x, y in aDict.items():
                         #print (x)
                         #print (aDict[x])
-                        ans = writeToCSV(self.iface, csvFileName,{'Item': x, 'Quantity': y}, isFirst)
+                        ans = common.writeToCSV(self.iface, csvFileName,{'Item': x, 'Quantity': y}, isFirst)
                         isFirst = False
 
             i+=1
@@ -729,20 +775,16 @@ class NetworkDesignTools:
 
 # Map Tool Event Handlers
 
-    def selectDCpolyObject(self):
-        #snap = QgsSnappingUtils()
-        #self.snapConfig = snap.config()
+    def linkDC(self):
 
-        #check that a Pole is already selected
+        if self.linkDCTool.isActive() == False:
+            self.iface.mapCanvas().setMapTool(self.linkDCTool)
 
-        if self.linkDCPolyTool.isActive() == False:
-            self.iface.mapCanvas().setMapTool(self.linkDCPolyTool)
-
-    def resetDCpolyTool(self):
-        self.dropCableBtn.setChecked(False)
-
+    def resetSelectDCTool(self):
+        self.linkDCBtn.setChecked(False)
+        
     def generateCable(self, startPoint, startLayerName, startFid, endPoint, endLayerName, endFid):
         createNodeCable(self.iface, startPoint, startLayerName, startFid, endPoint, endLayerName, endFid)
 
     def resetConnectNodesTool(self):
-        self.cableBtn.setChecked(False)
+        self.cableBtn.setChecked(False) 
