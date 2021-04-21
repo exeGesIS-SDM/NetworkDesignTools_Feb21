@@ -388,10 +388,7 @@ class NetworkDesignTools:
             pc = QgsVectorLayerUtils.createFeature(cableLyr)
             pc.setGeometry(new_cable)
             pc.setAttribute('Feed', '2') #Aerial
-            if cpfeat['TN'] == NULL:
-                pc.setAttribute('Cable name', cpfeat['SN'])
-            else:
-                pc.setAttribute('Cable name', '{}-{}'.format(cpfeat['SN'], cpfeat['TN']))
+            pc.setAttribute('Use', '1') #Access
             cableLyr.dataProvider().addFeature(pc)
         cableLyr.triggerRepaint()
 
@@ -462,7 +459,7 @@ class NetworkDesignTools:
         cpLyr.startEditing()
 
         for cpfeat in cpLyr.selectedFeatures(): #set all to No first, then ignore any n/a=6
-            cpfeat.setAttribute('LOC', '1')
+            cpfeat.setAttribute('LOC', 'N')
             cpfeat.setAttribute('LOC_TYPE', NULL)
             cpLyr.updateFeature(cpfeat)
 
@@ -480,7 +477,7 @@ class NetworkDesignTools:
 
                     LOC = bdryfeat['LOC']
                     if LOC != '6': # = 'N/A' Set the LOC to true if inside an LOC polygon, Set LOCType to the LOC type value
-                        cpfeat.setAttribute('LOC', '2')
+                        cpfeat.setAttribute('LOC', 'Y')
 
                         if LOC == '1': #Wayleave
                             cpfeat.setAttribute('LOC_TYPE', 'WL')
@@ -534,14 +531,27 @@ class NetworkDesignTools:
             QMessageBox.critical(self.iface.mainWindow(), errTitle, errMsg)
             return
 
-        #get the boundary, for selecting everything else
-        tempLyr = QgsVectorLayer("Polygon?crs=EPSG:27700", "Temp_Boundary", "memory")
-        tempLyr.dataProvider().addFeature(bdryFeat)
 
         #csvFileName  = layers['BillofQuantities']['source']
         csvFileName = QFileDialog.getSaveFileName(caption='Save Bill of Quantities As', filter='CSV (Comma delimited) (*.csv)', directory=os.path.expanduser('~'))[0]
         if csvFileName == '':
             return
+
+        #get the boundary, for selecting everything else
+        PNLyr = QgsVectorLayer("Polygon?crs=EPSG:27700", "Temp_Boundary", "memory")
+        PNLyr.dataProvider().addFeature(bdryFeat)
+
+        #get the secondary boundaries, where LOC <> N/A, for calculating LOC values
+        processing.run("qgis:selectbylocation", {'INPUT':bdryLyr, 'INTERSECT':PNLyr, 'METHOD':0, 'PREDICATE':[0]})
+
+        bdryLyr.selectByExpression('Type = 6', QgsVectorLayer.SelectBehavior.IntersectSelection)
+        
+        #print ('bdryLyr selected ' + str(bdryLyr.selectedFeatureCount()))
+
+        SNLyr = QgsVectorLayer("Polygon?crs=EPSG:27700", "Temp_Boundary", "memory")
+        SNLyr.dataProvider().addFeatures(bdryLyr.selectedFeatures())
+        print ('SNLyr ' + str(SNLyr.featureCount()))
+
         #run through the required checks from the json file
         i=0
         isFirst=True
@@ -560,7 +570,7 @@ class NetworkDesignTools:
 
             cpLyr = common.getLayerByName(self.iface, QgsProject.instance(), searchLayer, True)
             if cpLyr is not None:
-                processing.run("qgis:selectbylocation", {'INPUT':cpLyr, 'INTERSECT':tempLyr, 'METHOD':0, 'PREDICATE':[0]})
+                processing.run("qgis:selectbylocation", {'INPUT':cpLyr, 'INTERSECT':PNLyr, 'METHOD':0, 'PREDICATE':[0]})
 
                 try:
                     fldName = layers['BillofQuantities']['stats']['Stat'+str(i)]['Field']
@@ -587,7 +597,46 @@ class NetworkDesignTools:
 
                             processing.run("qgis:selectbyexpression", {'INPUT':cpLyr, 'EXPRESSION':srchCriteria, 'METHOD':0})
 
-                            ans = common.writeToCSV(self.iface, csvFileName,{'Item': srchName, 'Quantity': str(cpLyr.selectedFeatureCount())}, isFirst)
+                            try:
+                                summaryType = layers['BillofQuantities']['stats']['Stat'+str(i)]['SummaryType']
+                            except:
+                                summaryType = "Count"
+
+                            if summaryType == "Count":
+                                totalFeat = cpLyr.selectedFeatureCount()
+                            elif summaryType == "Length":
+                                totalFeat = 0
+                                for f in cpLyr.selectedFeatures():
+                                    totalFeat += f.geometry().length()
+
+
+                            #get the results, for selecting everything else - this is horrid, there must be a better way ...
+                            inLocLyr = QgsVectorLayer("Polygon?crs=EPSG:27700", "Temp_Boundary", "memory")
+                            inLocLyr.dataProvider().addFeatures(cpLyr.selectedFeatures())
+                            if inLocLyr.featureCount() == 0:    #wrong layer type
+                                inLocLyr = QgsVectorLayer("Point?crs=EPSG:27700", "Temp_Boundary", "memory")
+                                inLocLyr.dataProvider().addFeatures(cpLyr.selectedFeatures())
+                                if inLocLyr.featureCount() == 0:    #wrong layer type
+                                    inLocLyr = QgsVectorLayer("Polyline?crs=EPSG:27700", "Temp_Boundary", "memory")
+                                    inLocLyr.dataProvider().addFeatures(cpLyr.selectedFeatures())
+
+                            #print ('inLocLyr all ' + str(inLocLyr.featureCount()))
+
+                            #get records that intersect SNLyr which is only the LOC polygons
+                            processing.run("qgis:selectbylocation", {'INPUT':inLocLyr, 'INTERSECT':SNLyr, 'METHOD':0, 'PREDICATE':[0]})
+
+                            #print ('inLocLyr LOC ' + str(inLocLyr.selectedFeatureCount()))
+
+                            if summaryType == "Count":
+                                LOCFeatCount = inLocLyr.selectedFeatureCount()
+                            elif summaryType == "Length":
+                                LOCFeatCount = 0
+                                for f in inLocLyr.selectedFeatures():
+                                    LOCFeatCount += f.geometry().length()
+                            
+                            buildableFeatCount = totalFeat - LOCFeatCount
+
+                            ans = common.writeToCSV(self.iface, csvFileName,{'Item': srchName, 'Quantity': str(totalFeat), 'Buildable': str(buildableFeatCount), 'In LOC': str(LOCFeatCount)}, isFirst)
 
                             j+=1
                             try:
