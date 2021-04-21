@@ -120,7 +120,8 @@
                         "Calculation10":{"Criteria": "'110mm' IS NOT NULL AND Surface = 3 AND Material = 3",  "Title": "Traditional trench in CW- Tarmac" },
                         "Calculation11":{"Criteria": "'110mm' IS NOT NULL AND Surface = 3 AND Material = 4",  "Title": "Traditional trench in CW- Concrete" }, 
                         "Calculation12":{"Criteria": "'110mm' IS NOT NULL AND Surface = 3 AND Material = 5",  "Title": "Traditional trench in CW- Modular" },
-                        "Calculation13":{"Criteria": "Surface = 4",  "Title": "Quantity of road crossings" }
+                        "Calculation13":{"Criteria": "Surface = 4",  "Title": "Quantity of road crossings" },
+                        "SummaryType": "Length"
                     },
                 
                     "Stat7": {

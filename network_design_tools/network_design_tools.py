@@ -586,7 +586,18 @@ class NetworkDesignTools:
 
                             processing.run("qgis:selectbyexpression", {'INPUT':cpLyr, 'EXPRESSION':srchCriteria, 'METHOD':0})
 
-                            totalFeat = cpLyr.selectedFeatureCount()
+                            try:
+                                summaryType = layers['BillofQuantities']['stats']['Stat'+str(i)]['SummaryType']
+                            except:
+                                summaryType = "Count"
+
+                            if summaryType == "Count":
+                                totalFeat = cpLyr.selectedFeatureCount()
+                            elif summaryType == "Length":
+                                totalFeat = 0
+                                for f in cpLyr.selectedFeatures():
+                                    totalFeat += f.geometry().length()
+
 
                             #get the results, for selecting everything else - this is horrid, there must be a better way ...
                             inLocLyr = QgsVectorLayer("Polygon?crs=EPSG:27700", "Temp_Boundary", "memory")
@@ -598,14 +609,20 @@ class NetworkDesignTools:
                                     inLocLyr = QgsVectorLayer("Polyline?crs=EPSG:27700", "Temp_Boundary", "memory")
                                     inLocLyr.dataProvider().addFeatures(cpLyr.selectedFeatures())
 
-                            print ('inLocLyr all ' + str(inLocLyr.featureCount()))
+                            #print ('inLocLyr all ' + str(inLocLyr.featureCount()))
 
                             #get records that intersect SNLyr which is only the LOC polygons
                             processing.run("qgis:selectbylocation", {'INPUT':inLocLyr, 'INTERSECT':SNLyr, 'METHOD':0, 'PREDICATE':[0]})
 
-                            print ('inLocLyr LOC ' + str(inLocLyr.selectedFeatureCount()))
+                            #print ('inLocLyr LOC ' + str(inLocLyr.selectedFeatureCount()))
 
-                            LOCFeatCount = inLocLyr.selectedFeatureCount()
+                            if summaryType == "Count":
+                                LOCFeatCount = inLocLyr.selectedFeatureCount()
+                            elif summaryType == "Length":
+                                LOCFeatCount = 0
+                                for f in inLocLyr.selectedFeatures():
+                                    LOCFeatCount += f.geometry().length()
+                            
                             buildableFeatCount = totalFeat - LOCFeatCount
 
                             ans = common.writeToCSV(self.iface, csvFileName,{'Item': srchName, 'Quantity': str(totalFeat), 'Buildable': str(buildableFeatCount), 'In LOC': str(LOCFeatCount)}, isFirst)
