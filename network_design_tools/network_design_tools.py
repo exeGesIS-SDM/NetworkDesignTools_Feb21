@@ -215,7 +215,7 @@ class NetworkDesignTools:
 
         self.add_action(
             os.path.join(icons_folder,'houses.png'),
-            text=self.tr(u'Count Properties in a polygon'),
+            text=self.tr(u'Count properties in a polygon'),
             add_to_menu=False,
             location='Custom',
             callback=self.CountPropertiesInAPoly,
@@ -223,7 +223,7 @@ class NetworkDesignTools:
 
         self.add_action(
             os.path.join(icons_folder,'house.png'),
-            text=self.tr(u'Create a Property Count layer for properties within a Primary Node'),
+            text=self.tr(u'Create a property count layer for properties within a primary node polygon'),
             add_to_menu=False,
             location='Custom',
             callback=self.CreatePropertyCountLayer,
@@ -234,21 +234,21 @@ class NetworkDesignTools:
         self.cableToolButton.setPopupMode(QToolButton.MenuButtonPopup)
         self.actions.append(self.toolbar.addWidget(self.cableToolButton))
 
-        self.ugCableBtn = self.add_action(
-            os.path.join(icons_folder,'cable_add.png'),
-            text=self.tr(u'Cable builder (Underground)'),
-            add_to_toolbar=False,
-            location='CableTool',
-            callback=partial(self.selectNodes, 'UG'),
-            parent=self.iface.mainWindow())
-        self.cableToolButton.setDefaultAction(self.ugCableBtn)
-
         self.aerialCableBtn = self.add_action(
             os.path.join(icons_folder,'aerial_cable_add.png'),
             text=self.tr(u'Cable builder (Aerial)'),
             add_to_toolbar=False,
             location='CableTool',
             callback=partial(self.selectNodes, 'A'),
+            parent=self.iface.mainWindow())
+        self.cableToolButton.setDefaultAction(self.aerialCableBtn)
+
+        self.ugCableBtn = self.add_action(
+            os.path.join(icons_folder,'cable_add.png'),
+            text=self.tr(u'Cable builder (Underground)'),
+            add_to_toolbar=False,
+            location='CableTool',
+            callback=partial(self.selectNodes, 'UG'),
             parent=self.iface.mainWindow())
 
         self.linkDCBtn = self.add_action(
@@ -262,7 +262,7 @@ class NetworkDesignTools:
 
         self.add_action(
             os.path.join(icons_folder,'graphics-tablet.png'),
-            text=self.tr(u'Attribute Update'),
+            text=self.tr(u'Premises attribute update'),
             add_to_menu=False,
             location='Custom',
             callback=self.UpdateAttributes,
@@ -270,7 +270,7 @@ class NetworkDesignTools:
 
         self.add_action(
             os.path.join(icons_folder,'table_view.png'),
-            text=self.tr(u'Create a Bill of Quantities'),
+            text=self.tr(u'Create a bill of quantities'),
             add_to_menu=False,
             location='Custom',
             callback=self.CreateBillofQuantities,
@@ -528,7 +528,8 @@ class NetworkDesignTools:
 
 
         #csvFileName  = layers['BillofQuantities']['source']
-        csvFileName = QFileDialog.getSaveFileName(caption='Save Bill of Quantities As', filter='CSV (Comma delimited) (*.csv)', directory=os.path.expanduser('~'))[0]
+        startDir = QgsProject.instance().absolutePath()
+        csvFileName = QFileDialog.getSaveFileName(caption='Save Bill of Quantities As', filter='CSV (Comma delimited) (*.csv)', directory=startDir)[0]
         if csvFileName == '':
             return
 
@@ -783,11 +784,12 @@ class NetworkDesignTools:
         pcLyr.commitChanges()
         pcLyr.rollBack()
 
+        featCount = vlayer.featureCount()
         QgsProject.instance().removeMapLayer(vlayer)
         QgsProject.instance().removeMapLayer(tempLyr2)
 
         QMessageBox.information(self.iface.mainWindow(),'Network Design Toolkit', \
-                                str(vlayer.featureCount()) +' property counts inserted.', QMessageBox.Ok)
+                                str(featCount) +' property counts inserted.', QMessageBox.Ok)
 
     def CountPropertiesInAPoly(self):
         """ The user should already have a polygon selected.
