@@ -360,6 +360,6 @@
     },
     "settings":{
         "connectNodeLayers": ["Cabinet","Node","Joint"],
-        "dropCableLayers": ["BTPole","JUPole","NewPole"]
+        "nodeUseBdryTypeLUT": {"1":"1", "2":"2", "3":"3", "4":"5", "5":"4"}
     }
 }

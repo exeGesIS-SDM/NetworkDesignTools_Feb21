@@ -30,7 +30,7 @@ from network_design_tools import common
 
 class SelectDCMapTool(QgsMapToolEmitPoint):
 
-    dcSelected = pyqtSignal(str, 'QgsFeatureId', 'QgsFeatureId')
+    dcSelected = pyqtSignal('QgsFeatureId', 'QgsFeatureId')
 
     def __init__(self, iface, canvas):
         """The user should select a pole object. Then select a Boundary"""
@@ -41,27 +41,45 @@ class SelectDCMapTool(QgsMapToolEmitPoint):
         self.iface = iface
         self.canvas = canvas
         # self.snapper = QgsMapCanvasSnappingUtils(self.canvas)
-        self.poleLayerNames = common.prerequisites['settings']['dropCableLayers']
-        self.poleLayers = {}
+        self.nodeLayerName = common.prerequisites['layers']['Node']['name']
+        self.nodeLayer = None
+        self.nodeFields = common.prerequisites['layers']['Node']['fields'] 
+        self.nodeUseLUT = common.prerequisites['settings']['nodeUseBdryTypeLUT']
         self.bndLayerName = common.prerequisites['layers']['Boundaries']['name']
         self.bndLayer = None
         self.bndFields = common.prerequisites['layers']['Boundaries']['fields']
         self.poleSelected = False
-        self.poleLayerName = ''
         self.poleId = -1
-        self.bndID = -1
+        self.poleFeat = None
         self.crs = ''
         self.reset()
 
     def reset(self):
         self.poleSelected = False
         self.poleId = -1
-
+        self.poleFeat = None
+        
     def canvasReleaseEvent(self, event):
         # Get the click and emit the point in source crs
+        if self.nodeLayer is None:
+            self.nodeLayer = common.getLayerByName(self.iface, QgsProject.instance(), self.nodeLayerName)
+            if self.nodeLayer is None:
+                self.deactivate()
+
+        point = event.mapPoint()
+        self.nodeLayer.selectByExpression('\"Position\"=\'1\'')
+        request = QgsFeatureRequest(QgsRectangle(point.x()-1,point.y()-1, point.x()+1, point.y()+1))
+        # Get ID of first feature with DP type
+        for pole in self.nodeLayer.getSelectedFeatures(request):
+            #print(pole['Use'])
+            #any pole will do
+            #if pole['Use'] == 'Carrier' or pole['Use'] == 'PMCE' or pole['Use'] == 'PMSN':
+            self.poleSelected = True
+            self.poleId = pole.id()
+            self.poleFeat = pole
+            break
 
         if self.poleSelected:
-
             self.poleSelected = False
 
             # Get the click and check they clicked on a SN
@@ -72,55 +90,16 @@ class SelectDCMapTool(QgsMapToolEmitPoint):
                 else:
                     self.deactivate()
 
-            point = event.mapPoint()
-            request = QgsFeatureRequest(QgsRectangle(point.x()-1,point.y()-1, point.x()+1, point.y()+1))
-            # Get ID of the bound, of type SN
-
             for bnd in self.bndLayer.getFeatures(request):
-                if bnd['Type'] == '2' or bnd['Type'] == '3': # UGSN or PMSN
-                    self.bndID = bnd.id()
-                    self.dcSelected.emit(self.poleLayerName, self.poleId, self.bndID)
+                if bnd[self.bndFields['type']] == self.nodeUseLUT[self.poleFeat[self.nodeFields['use']]]: # UGSN or PMSN
+                    self.dcSelected.emit(self.poleId, bnd.id())
+                    break
 
             self.reset()
         else:
-            if len(self.poleLayers) == 0:
-                self.initialiseLayers()
-
-            point = event.mapPoint()
-            request = QgsFeatureRequest(QgsRectangle(point.x()-1,point.y()-1, point.x()+1, point.y()+1))
-            
-            poleLayerName, poleId = self.getFeatureByLocation(request)
-            if poleId is not None:
-                #print(pole['Use'])
-                #any pole will do
-                #if pole['Use'] == 'Carrier' or pole['Use'] == 'PMCE' or pole['Use'] == 'PMSN':
-                self.poleSelected = True
-                self.poleLayerName = poleLayerName
-                self.poleId = poleId
-                self.iface.messageBar().pushInfo('Network Design Toolkit', \
-                    '{0} object selected, now select an object from the {1} layer, to create cables to all properties within the area'.format(self.poleLayerName,self.bndLayerName))
-                return
-
             QMessageBox.information(self.iface.mainWindow(), 'Network Design Toolkit', \
-                'First select an object from one of the Pole layers', QMessageBox.Ok)
+                'First select an aerial node from the {} layer'.format(self.nodeLayerName) , QMessageBox.Ok)
 
-    def initialiseLayers(self):
-        for layerName in self.poleLayerNames:
-            if not layerName in self.poleLayers:
-                layer = common.getLayerByName(self.iface, QgsProject.instance(), common.prerequisites['layers'][layerName]['name'], False)
-                if layer is not None:
-                    self.poleLayers[layerName] = layer
-
-        if len(self.poleLayers) == 0:
-            self.iface.messageBar().pushInfo('Layers not open', 'None of the Pole layers are open.')
-            self.deactivate()
-
-    def getFeatureByLocation(self, request):
-        for layerName, layer in self.poleLayers.items():
-            for feat in layer.getFeatures(request):
-                return layerName, feat.id()
-        return None, None
-    
     def isZoomTool(self):
         return False
 

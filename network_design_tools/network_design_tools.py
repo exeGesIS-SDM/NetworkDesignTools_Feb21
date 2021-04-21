@@ -322,7 +322,7 @@ class NetworkDesignTools:
             self.first_start = False
 
 
-    def selectDCObject(self, poleLayerName, poleId, SNID):
+    def selectDCObject(self, poleId, SNID):
         '''
         Prompt user to click on pole
         Prompt user to click on secondary node(SN) polygon
@@ -338,6 +338,7 @@ class NetworkDesignTools:
 
         layers = common.prerequisites['layers']
         bdryLayerName = layers['Boundaries']['name']
+        poleLayerName = layers['Node']['name']
         AddressLayerName = layers['Premises']['name']
         CableLayerName = layers['Cable']['name']
 
@@ -345,7 +346,7 @@ class NetworkDesignTools:
         if bdryLyr is None:
             return
 
-        poleLyr = common.getLayerByName(self.iface, QgsProject.instance(), layers[poleLayerName]['name'])
+        poleLyr = common.getLayerByName(self.iface, QgsProject.instance(), poleLayerName)
         if poleLyr is None:
             return
 
