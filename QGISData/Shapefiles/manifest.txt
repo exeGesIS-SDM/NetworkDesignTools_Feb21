@@ -1,7 +1,0 @@
-ZIP MANIFEST - OS_order_4997544_OSMasterMapTopography5km_2020-12-11_1.zip
-
-This zip contains:
-4923598-SJ6595.gz
-4923598-SJ6095.gz
-4923598-SJ6590.gz
-4923598-SJ6090.gz
