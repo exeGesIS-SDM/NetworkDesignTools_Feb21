@@ -480,21 +480,16 @@ class NetworkDesignTools:
                         cpfeat.setAttribute('LOC', 'Y')
 
                         if LOC == '1': #Wayleave
-                            cpfeat.setAttribute('LOC_TYPE', 'WL')
+                            cpfeat.setAttribute('LOC_TYPE', 'WAY')
                         elif LOC == '2': #Private Road
-                            cpfeat.setAttribute('LOC_TYPE', 'PR')
+                            cpfeat.setAttribute('LOC_TYPE', 'PRRD')
                         elif LOC == '3': #Uneconomical
-                            cpfeat.setAttribute('LOC_TYPE', 'UE')
+                            cpfeat.setAttribute('LOC_TYPE', 'UEL')
                         elif LOC == '4': #Section 58
-                            cpfeat.setAttribute('LOC_TYPE', 'S58')
+                            cpfeat.setAttribute('LOC_TYPE', 'UST')
                         elif LOC == '5': #Conservation
-                            cpfeat.setAttribute('LOC_TYPE', 'CON')
-                    #else:
-                    #    print('setting LOC to N')
-                    #    cpfeat.setAttribute('LOC', 'N')
-                    #    cpfeat.setAttribute('LOC_TYPE', '')
+                            cpfeat.setAttribute('LOC_TYPE', 'OOS')
 
-                    #cpLyr.updateFields()
                     cpLyr.updateFeature(cpfeat)
 
         cpLyr.commitChanges()
