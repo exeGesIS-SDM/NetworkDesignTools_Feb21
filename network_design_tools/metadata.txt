@@ -4,7 +4,7 @@
 
 [general]
 name=Network Design Tools
-qgisMinimumVersion=3.0
+qgisMinimumVersion=3.10
 description=Network Design Tools
 version=0.1
 author=ESDM

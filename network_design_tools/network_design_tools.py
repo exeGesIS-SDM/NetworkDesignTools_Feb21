@@ -229,31 +229,6 @@ class NetworkDesignTools:
             callback=self.CreatePropertyCountLayer,
             parent=self.iface.mainWindow())
 
-        self.add_action(
-            os.path.join(icons_folder,'table_view.png'),
-            text=self.tr(u'Create a Bill of Quantities'),
-            add_to_menu=False,
-            location='Custom',
-            callback=self.CreateBillofQuantities,
-            parent=self.iface.mainWindow())
-
-        self.add_action(
-            os.path.join(icons_folder,'graphics-tablet.png'),
-            text=self.tr(u'Attribute Update'),
-            add_to_menu=False,
-            location='Custom',
-            callback=self.UpdateAttributes,
-            parent=self.iface.mainWindow())
-
-        self.linkDCBtn = self.add_action(
-            os.path.join(icons_folder,'node_add.png'),
-            text=self.tr(u'Drop cable builder'),
-            add_to_menu=False,
-            location='Custom',
-            callback=self.linkDC,
-            parent=self.iface.mainWindow())
-        self.linkDCBtn.setCheckable(True)
-
         self.cableToolButton = QToolButton()
         self.cableToolButton.setMenu(QMenu())
         self.cableToolButton.setPopupMode(QToolButton.MenuButtonPopup)
@@ -276,6 +251,31 @@ class NetworkDesignTools:
             callback=partial(self.selectNodes, 'A'),
             parent=self.iface.mainWindow())
 
+        self.linkDCBtn = self.add_action(
+            os.path.join(icons_folder,'node_add.png'),
+            text=self.tr(u'Drop cable builder'),
+            add_to_menu=False,
+            location='Custom',
+            callback=self.linkDC,
+            parent=self.iface.mainWindow())
+        self.linkDCBtn.setCheckable(True)
+
+        self.add_action(
+            os.path.join(icons_folder,'graphics-tablet.png'),
+            text=self.tr(u'Attribute Update'),
+            add_to_menu=False,
+            location='Custom',
+            callback=self.UpdateAttributes,
+            parent=self.iface.mainWindow())
+
+        self.add_action(
+            os.path.join(icons_folder,'table_view.png'),
+            text=self.tr(u'Create a Bill of Quantities'),
+            add_to_menu=False,
+            location='Custom',
+            callback=self.CreateBillofQuantities,
+            parent=self.iface.mainWindow())
+
         #self.linkDCPolyTool.setAction(dropCableBtn)
 
         # Connect the handler for the linkDCTool click event
@@ -288,7 +288,6 @@ class NetworkDesignTools:
 
         # will be set False in run()
         self.first_start = True
-
 
 
     def closePlugin(self):
@@ -724,6 +723,10 @@ class NetworkDesignTools:
             return
         pcLyr.startEditing()
         try:
+            # Delete all existing features
+            idList = [feat.id() for feat in pcLyr.getFeatures()]
+            pcLyr.deleteFeatures(idList)
+
             for feat in vlayer.getFeatures():
                 pc = QgsVectorLayerUtils.createFeature(pcLyr)
                 gPnt = QgsGeometry.fromPointXY(QgsPointXY(feat['x'],feat['y']))
@@ -736,11 +739,11 @@ class NetworkDesignTools:
         pcLyr.commitChanges()
         pcLyr.rollBack()
 
-        QMessageBox.information(self.iface.mainWindow(),'Network Design Toolkit', \
-                                str(vlayer.featureCount()) +' property counts inserted.', QMessageBox.Ok)
-
         QgsProject.instance().removeMapLayer(vlayer)
         QgsProject.instance().removeMapLayer(tempLyr2)
+
+        QMessageBox.information(self.iface.mainWindow(),'Network Design Toolkit', \
+                                str(vlayer.featureCount()) +' property counts inserted.', QMessageBox.Ok)
 
     def CountPropertiesInAPoly(self):
         """ The user should already have a polygon selected.
