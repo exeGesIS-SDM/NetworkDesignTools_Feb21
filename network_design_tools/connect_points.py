@@ -64,19 +64,23 @@ def createNodeCable(iface, routingType, startPoint, startLayerName, startFid, en
             end = '{}, {} [{}]'.format(endPoint.x(), endPoint.y(), QgsProject.instance().crs().authid())
             result = processing.run("native:shortestpathpointtopoint", { 'DEFAULT_DIRECTION' : 2, 'DEFAULT_SPEED' : 50, 'DIRECTION_FIELD' : '', \
                             'START_POINT' : start, 'END_POINT' : end, 'INPUT' : selDuctLyr, 'OUTPUT' : 'TEMPORARY_OUTPUT', \
-                            'SPEED_FIELD' : '', 'STRATEGY' : 0, 'TOLERANCE' : 0.01, 'VALUE_BACKWARD' : '', 'VALUE_BOTH' : '', 'VALUE_FORWARD' : '' })
+                            'SPEED_FIELD' : '', 'STRATEGY' : 0, 'TOLERANCE' : 0.1, 'VALUE_BACKWARD' : '', 'VALUE_BOTH' : '', 'VALUE_FORWARD' : '' })
 
             for c in result['OUTPUT'].getFeatures():
                 feat = QgsVectorLayerUtils.createFeature(cableLyr)
                 feat.setGeometry(c.geometry())
-                feat.setAttribute(cableFields['feed'], 1) #U/G
+                feat.setAttribute(cableFields['feed'], 1) # U/G
+                feat.setAttribute(cableFields['use'], 2) # Distribution
+                feat.setAttribute(cableFields['type'], 2) # 12F
                 feat.setAttribute(cableFields['name'], cableName)
                 cableLyr.addFeature(feat)
         else:
             feat = QgsVectorLayerUtils.createFeature(cableLyr)
             c = QgsGeometry.fromPolylineXY([startPoint, endPoint])
             feat.setGeometry(c)
-            feat.setAttribute(cableFields['feed'], 2) #Aerial
+            feat.setAttribute(cableFields['feed'], 2) # Aerial
+            feat.setAttribute(cableFields['use'], 2) # Distribution
+            feat.setAttribute(cableFields['type'], 2) # 12F
             feat.setAttribute(cableFields['name'], cableName)
             cableLyr.addFeature(feat)
         result = iface.openFeatureForm(cableLyr, feat, False, showModal = True)
