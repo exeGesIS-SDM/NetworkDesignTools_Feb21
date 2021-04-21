@@ -1,19 +1,19 @@
 {
-    "version": 0.4,
-    "layers":{
-         "Boundaries": {
-             "name": "Boundaries",
-             "source": "./Shapefiles/Boundaries.shp",
-             "fields": {
-                 "type": "Type",
-                 "premises": "Premises",
-                 "address": "Address",
-                 "name": "Name",
-                 "loc": "LOC",
-                 "comments": "Comments"
-             }
-         },
-         "Premises": {
+    "version": 0.2,
+    "layers": {
+        "Boundaries": {
+            "name": "Boundaries",
+            "source": "./Shapefiles/Boundaries.shp",
+            "fields": {
+                "type": "Type",
+                "premises": "Premises",
+                "address": "Address",
+                "name": "Name",
+                "loc": "LOC",
+                "comments": "Comments"
+            }
+        },
+        "Premises": {
             "name": "Customer Premises",
             "source": "./Shapefiles/Customer Premises.shp",
             "fields": {
@@ -33,161 +33,173 @@
         "BillofQuantities": {
             "name": "BillofQuantities",
             "stats": {
-                    "Stat0": {
-                        "Title": "Premises",
-                        "Layer": "Customer Premises",
-                        "Calculation0":{"Criteria": "UPRN IS NOT NULL",  "Title": "Premises FED total" },
-                        "Calculation1":{"Criteria": "UPRN IS NOT NULL",  "Title": "Premises aerially fed" },
-                        "Calculation2":{"Criteria": "UPRN IS NOT NULL",  "Title": "Premises U/G fed" },
-                        "SummaryType": "Count"  
-                    },
+                "Stat0": {
+                    "Title": "Premises",
+                    "Layer": "Customer Premises",
+                    "Calculation0": { "Criteria": "UPRN IS NOT NULL", "Title": "Premises fed total" },
+                    "Calculation1": { "Criteria": "UPRN IS NOT NULL", "Title": "Premises aerially fed" },
+                    "Calculation2": { "Criteria": "UPRN IS NOT NULL", "Title": "Premises U/G fed" },
+                    "SummaryType": "Count"
+                },
 
-                    "Stat1": {
-                        "Title": "BT Cabinets",
-                        "Layer": "BT Cabinet",
-                        "Field": "",
-                        "SummaryType": "Count"  
-                    },
-                
-                    "Stat2": {
-                        "Title": "Nodes",
-                        "Layer": "Nodes",
-                        "Calculation0":{"Criteria": "Use = 1",  "Title": "UGPN" },
-                        "Calculation1":{"Criteria": "Use = 6 AND Splitters = 1",  "Title": "ACPN" },
-                        "Calculation2":{"Criteria": "Use = 6 AND Splitters = 2",  "Title": "PMPN" },
-                        "Calculation3":{"Criteria": "Use = 6 AND Splitters = 1",  "Title": "MSN 1x1:8" },
-                        "Calculation4":{"Criteria": "Use = 6 AND Splitters = 2",  "Title": "MSN 2x1:8" },
-                        "Calculation5":{"Criteria": "Use = 6 AND Splitters = 3",  "Title": "MSN 3x1:8" },
-                        "Calculation6":{"Criteria": "Use = 6 AND Splitters = 4",  "Title": "MSN 4x1:8" },
-                        "Calculation7":{"Criteria": "Use = 6 AND Splitters = 5",  "Title": "MSN 5x1:8" },
-                        "Calculation8":{"Criteria": "Use = 6 AND Splitters = 6",  "Title": "MSN 6x1:8" },
-                        "Calculation9":{"Criteria": "Use = 6 AND Splitters = 7",  "Title": "MSN 7x1:8" },
-                        "Calculation10":{"Criteria": "Use = 6 AND Splitters = 8",  "Title": "MSN 8x1:8" },
-                        "Calculation11":{"Criteria": "Use = 6 AND Splitters = 9",  "Title": "MSN 9x1:8" },
-                        "Calculation12":{"Criteria": "Use = 6 AND Splitters = 10",  "Title": "MSN 10x1:8" },
-                        "Calculation13":{"Criteria": "Use = 6 AND Splitters = 11",  "Title": "MSN 11x1:8" },
-                        "Calculation14":{"Criteria": "Use = 6 AND Splitters = 12",  "Title": "MSN 12x1:8" },
-                        "Calculation15":{"Criteria": "Use = 2 AND Splitters = 1",  "Title": "UGSN 1 x 1:8" },
-                        "Calculation16":{"Criteria": "Use = 2 AND Splitters = 2",  "Title": "UGSN 2 x 1:8" },
-                        "Calculation17":{"Criteria": "Use = 3 AND Splitters = 1",  "Title": "PMSN 1 x 1:8" },
-                        "Calculation18":{"Criteria": "Use = 3 AND Splitters = 2",  "Title": "PMSN 2 x 1:8" },
-                        "Calculation19":{"Criteria": "Use = 3 AND Splitters = 3",  "Title": "PMSN 3 x 1:8" },
-                        "Calculation20":{"Criteria": "Use = 5",  "Title": "UGCE" },
-                        "Calculation21":{"Criteria": "Use = 4",  "Title": "PMCE" },
-                        "Calculation22":{"Criteria": "Use = 7",  "Title": "MCE" },
-                        "SummaryType": "Count"
-                    },
-                
-                    "Stat3": {
-                        "Title": "PIA Rental - Poles",
-                        "Layer": "BT Pole",
-                        "Calculation0":{"Criteria": "Use = 3",  "Title": "Carrier" },
-                        "Calculation1":{"Criteria": "Use = 1",  "Title": "Pole top equipment" },
-                        "Calculation2":{"Criteria": "Use = 2",  "Title": "Cable up a pole (per cable)" },
-                        "Calculation3":{"Criteria": "Use = 4",  "Title": "JU pole" },
-                        "SummaryType": "Count"  
-                    },
+                "Stat1": {
+                    "Title": "BT Cabinets",
+                    "Layer": "BT Cabinet",
+                    "Field": "",
+                    "SummaryType": "Count"
+                },
 
-                    "Stat4": {
-                        "Title": "PIA Rental - Ducts",
-                        "Layer": "BT Duct",
-                        "Calculation0":{"Criteria": "TYPE_NAME = 'TRENCH'",  "Title": "Facility in spine duct" },
-                        "Calculation1":{"Criteria": "TYPE_NAME = 'CONDUIT'",  "Title": "Facility in lead in duct" },
-                        "SummaryType": "Count"  
-                    },
-   
-                    "Stat5": {
-                        "Title": "PIA Rental - Chambers",
-                        "Layer": "BT Chambers",
-                        "Calculation0":{"Criteria": "USE = 1",  "Title": "BT chambers utilised (total)" },
-                        "Calculation1":{"Criteria": "USE = 2",  "Title": "BT chambers utilised (hosting)" },
-                        "SummaryType": "Count"  
-                    },
+                "Stat2": {
+                    "Title": "Nodes",
+                    "Layer": "Nodes",
+                    "Calculation0": { "Criteria": "Use = 1", "Title": "UGPN" },
+                    "Calculation1": { "Criteria": "Use = 6 AND Splitters = 1", "Title": "ACPN" },
+                    "Calculation2": { "Criteria": "Use = 6 AND Splitters = 2", "Title": "PMPN" },
+                    "Calculation3": { "Criteria": "Use = 6 AND Splitters = 1", "Title": "MSN 1x1:8" },
+                    "Calculation4": { "Criteria": "Use = 6 AND Splitters = 2", "Title": "MSN 2x1:8" },
+                    "Calculation5": { "Criteria": "Use = 6 AND Splitters = 3", "Title": "MSN 3x1:8" },
+                    "Calculation6": { "Criteria": "Use = 6 AND Splitters = 4", "Title": "MSN 4x1:8" },
+                    "Calculation7": { "Criteria": "Use = 6 AND Splitters = 5", "Title": "MSN 5x1:8" },
+                    "Calculation8": { "Criteria": "Use = 6 AND Splitters = 6", "Title": "MSN 6x1:8" },
+                    "Calculation9": { "Criteria": "Use = 6 AND Splitters = 7", "Title": "MSN 7x1:8" },
+                    "Calculation10": { "Criteria": "Use = 6 AND Splitters = 8", "Title": "MSN 8x1:8" },
+                    "Calculation11": { "Criteria": "Use = 6 AND Splitters = 9", "Title": "MSN 9x1:8" },
+                    "Calculation12": { "Criteria": "Use = 6 AND Splitters = 10", "Title": "MSN 10x1:8" },
+                    "Calculation13": { "Criteria": "Use = 6 AND Splitters = 11", "Title": "MSN 11x1:8" },
+                    "Calculation14": { "Criteria": "Use = 6 AND Splitters = 12", "Title": "MSN 12x1:8" },
+                    "Calculation15": { "Criteria": "Use = 2 AND Splitters = 1", "Title": "UGSN 1 x 1:8" },
+                    "Calculation16": { "Criteria": "Use = 2 AND Splitters = 2", "Title": "UGSN 2 x 1:8" },
+                    "Calculation17": { "Criteria": "Use = 3 AND Splitters = 1", "Title": "PMSN 1 x 1:8" },
+                    "Calculation18": { "Criteria": "Use = 3 AND Splitters = 2", "Title": "PMSN 2 x 1:8" },
+                    "Calculation19": { "Criteria": "Use = 3 AND Splitters = 3", "Title": "PMSN 3 x 1:8" },
+                    "Calculation20": { "Criteria": "Use = 5", "Title": "UGCE" },
+                    "Calculation21": { "Criteria": "Use = 4", "Title": "PMCE" },
+                    "Calculation22": { "Criteria": "Use = 7", "Title": "MCE" },
+                    "SummaryType": "Count"
+                },
 
-                    "Stat6": {
-                        "Title": "New Civils",
-                        "Layer": "Duct",
-                        "Calculation0":{"Criteria": "'7/3.5mm' IS NOT NULL AND Surface = 1",  "Title": "Narrow trench in verge" },
-                        "Calculation1":{"Criteria": "'7/3.5mm' IS NOT NULL AND Surface = 2 AND Material = 2",  "Title": "Narrow trench in FW- Unmade" },
-                        "Calculation2":{"Criteria": "'7/3.5mm' IS NOT NULL AND Surface = 2 AND Material = 3",  "Title": "Narrow trench in FW- Tarmac" },
-                        "Calculation3":{"Criteria": "'7/3.5mm' IS NOT NULL AND Surface = 2 AND Material = 4",  "Title": "Narrow trench in FW- Concrete" },
-                        "Calculation4":{"Criteria": "'7/3.5mm' IS NOT NULL AND Surface = 2 AND Material = 5",  "Title": "Narrow trench in FW- Modular" },
-                        "Calculation5":{"Criteria": "'7/3.5mm' IS NOT NULL AND Surface = 3 AND Material = 2",  "Title": "Narrow trench in CW- Unmade" }, 
-                        "Calculation6":{"Criteria": "'7/3.5mm' IS NOT NULL AND Surface = 3 AND Material = 3",  "Title": "Narrow trench in CW- Tarmac" },
-                        "Calculation7":{"Criteria": "'7/3.5mm' IS NOT NULL AND Surface = 3 AND Material = 4",  "Title": "Narrow trench in CW- Concrete" },
-                        "Calculation8":{"Criteria": "'7/3.5mm' IS NOT NULL AND Surface = 3 AND Material = 5",  "Title": "Narrow trench in CW- Modular" }, 
-                        "Calculation9":{"Criteria": "'110mm' IS NOT NULL AND Surface = 3 AND Material = 2",  "Title": "Traditional trench in CW- Unmade" },
-                        "Calculation10":{"Criteria": "'110mm' IS NOT NULL AND Surface = 3 AND Material = 3",  "Title": "Traditional trench in CW- Tarmac" },
-                        "Calculation11":{"Criteria": "'110mm' IS NOT NULL AND Surface = 3 AND Material = 4",  "Title": "Traditional trench in CW- Concrete" }, 
-                        "Calculation12":{"Criteria": "'110mm' IS NOT NULL AND Surface = 3 AND Material = 5",  "Title": "Traditional trench in CW- Modular" },
-                        "Calculation13":{"Criteria": "Surface = 4",  "Title": "Quantity of road crossings" },
-                        "SummaryType": "Length"
-                    },
-                
-                    "Stat7": {
-                        "Title": "Chambers",
-                        "Layer": "Chambers",
-                        "Calculation0":{"Criteria": "Type = 1 AND Surface = 1",  "Title": "FW2 in Verge" },
-                        "Calculation1":{"Criteria": "Type = 1 AND Surface = 2",  "Title": "FW2 in Footway" },
-                        "Calculation2":{"Criteria": "Type = 2 AND Surface = 1",  "Title": "FW4 in Verge" },
-                        "Calculation3":{"Criteria": "Type = 2 AND Surface = 2",  "Title": "FW4 in Footway" },
-                        "Calculation4":{"Criteria": "Type = 3 AND Surface = 1",  "Title": "FW6 in Verge" },
-                        "Calculation5":{"Criteria": "Type = 3 AND Surface = 2",  "Title": "FW6 in Footway" }, 
-                        "Calculation6":{"Criteria": "Type = 4 AND Surface = 1",  "Title": "FW10 in Verge" },
-                        "Calculation7":{"Criteria": "Type = 4 AND Surface = 2",  "Title": "FW10 in Footway" },
-                        "Calculation8":{"Criteria": "Type = 5",  "Title": "CW1" }, 
-                        "Calculation9":{"Criteria": "Surface = 1",  "Title": "Subscriber feeds in Verge" },
-                        "Calculation10":{"Criteria": "Surface = 2",  "Title": "Subscriber feeds in FW" },
-                        "Calculation11":{"Criteria": "Surface = 3",  "Title": "Subscriber feeds in CW" }, 
-                        "Calculation12":{"Criteria": "State = 2",  "Title": "Gel wrap" },
-                        "SummaryType": "Count"  
-                    },
+                "Stat3": {
+                    "Title": "PIA Rental - Poles",
+                    "Layer": "BT Pole",
+                    "Calculation0": { "Criteria": "Use = 3", "Title": "Carrier" },
+                    "Calculation1": { "Criteria": "Use = 1", "Title": "Pole top equipment" },
+                    "Calculation2": { "Criteria": "Use = 2", "Title": "Cable up a pole (per cable)" },
+                    "Calculation3": { "Criteria": "Use = 4", "Title": "JU pole" },
+                    "SummaryType": "Count"
+                },
 
-                    "Stat8": {
-                        "Title": "Joints",
-                        "Layer": "Joints",
-                        "Calculation0":{"Criteria": "Position = 1 AND Size = '144F'",  "Title": "144F UG" },
-                        "Calculation1":{"Criteria": "Position = 1 AND Size = '96F'",  "Title": "96F UG" },
-                        "Calculation2":{"Criteria": "Position = 1 AND Size = '48F'",  "Title": "48F UG" },
-                        "Calculation3":{"Criteria": "Position = 2 AND Size = '48F'",  "Title": "48F PM" },
-                        "SummaryType": "Count"  
-                    },
-                    
+                "Stat4": {
+                    "Title": "PIA Rental - Ducts",
+                    "Layer": "BT Duct",
+                    "Calculation0": { "Criteria": "TYPE_NAME = 'TRENCH'", "Title": "Facility in spine duct" },
+                    "Calculation1": { "Criteria": "TYPE_NAME = 'CONDUIT'", "Title": "Facility in lead in duct" },
+                    "SummaryType": "Count"
+                },
 
-                    "Stat9": {
-                        "Title": "Cable Quantities",
-                        "Layer": "Cable",
-                        "Calculation0":{"Criteria": "Feed = 1 AND Type = 6",  "Title": "144F Cable U/G" },
-                        "Calculation1":{"Criteria": "Feed = 1 AND Type = 5",  "Title": "96F Cable U/G" },
-                        "Calculation2":{"Criteria": "Feed = 1 AND Type = 4",  "Title": "48F Cable U/G" },
-                        "Calculation3":{"Criteria": "Feed = 2 AND Type = 4",  "Title": "48F Cable Aerial" },
-                        "Calculation4":{"Criteria": "Feed = 1 AND Type = 2",  "Title": "12F Cable U/G" },
-                        "Calculation5":{"Criteria": "Feed = 1 AND Type = 1",  "Title": "1F Drop Cable U/G" },
-                        "Calculation6":{"Criteria": "Feed = 2 AND Type = 1",  "Title": "1F Drop Cable Aerial" }
-                    },
+                "Stat5": {
+                    "Title": "PIA Rental - Chambers",
+                    "Layer": "BT Chambers",
+                    "Calculation0": { "Criteria": "USE = 1", "Title": "BT chambers utilised (total)" },
+                    "Calculation1": { "Criteria": "USE = 2", "Title": "BT chambers utilised (hosting)" },
+                    "SummaryType": "Count"
+                },
 
-                    "Stat10": {
-                        "Title": "PIA Rental - Poles",
-                        "Layer": "BT Pole",
-                        "Calculation0":{"Criteria": "PLANT_ITEM = '8M LIGHT'",  "Title": "8m Poles Light" },
-                        "Calculation1":{"Criteria": "PLANT_ITEM = '8M MEDIUM'",  "Title": "8m Poles Medium" },
-                        "Calculation2":{"Criteria": "PLANT_ITEM = '8M STOUT'",  "Title": "8m Poles Stout" },
-                        "Calculation3":{"Criteria": "PLANT_ITEM = '9M LIGHT'",  "Title": "9m Poles Light" },
-                        "Calculation4":{"Criteria": "PLANT_ITEM = '9M MEDIUM'",  "Title": "9m Poles Medium" },
-                        "Calculation5":{"Criteria": "PLANT_ITEM = '9M STOUT'",  "Title": "9m Poles Stout" },
-                        "Calculation6":{"Criteria": "PLANT_ITEM = '10M LIGHT'",  "Title": "10m Poles Light" },
-                        "Calculation7":{"Criteria": "PLANT_ITEM = '10M MEDIUM'",  "Title": "10m Poles Medium" },
-                        "Calculation8":{"Criteria": "PLANT_ITEM = '10M STOUT'",  "Title": "10m Poles Stout" },
-                        "Calculation9":{"Criteria": "PLANT_ITEM = '11M LIGHT'",  "Title": "11m Poles Light" },
-                        "Calculation10":{"Criteria": "PLANT_ITEM = '11M MEDIUM'",  "Title": "11m Poles Medium" },
-                        "Calculation11":{"Criteria": "PLANT_ITEM = '11M STOUT'",  "Title": "11m Poles Stout" },
-                        "Calculation12":{"Criteria": "PLANT_ITEM = '12M LIGHT'",  "Title": "12m Poles Light" },
-                        "Calculation13":{"Criteria": "PLANT_ITEM = '12M MEDIUM'",  "Title": "12m Poles Medium" },
-                        "Calculation14":{"Criteria": "PLANT_ITEM = '12M STOUT'",  "Title": "12m Poles Stout" }
-                    }
-                    
+                "Stat6": {
+                    "Title": "New Civils",
+                    "Layer": "Duct",
+                    "Calculation0": { "Criteria": "\"7/3.5mm\" IS NOT NULL AND Surface = 'Verge'", "Title": "Narrow trench in verge" },
+                    "Calculation1": { "Criteria": "\"7/3.5mm\" IS NOT NULL AND Surface = 'FW' AND Material = 2", "Title": "Narrow trench in FW- Unmade" },
+                    "Calculation2": { "Criteria": "\"7/3.5mm\" IS NOT NULL AND Surface = 'FW' AND Material = 3", "Title": "Narrow trench in FW- Tarmac" },
+                    "Calculation3": { "Criteria": "\"7/3.5mm\" IS NOT NULL AND Surface = 'FW' AND Material = 4", "Title": "Narrow trench in FW- Concrete" },
+                    "Calculation4": { "Criteria": "\"7/3.5mm\" IS NOT NULL AND Surface = 'FW' AND Material = 5", "Title": "Narrow trench in FW- Modular" },
+                    "Calculation5": { "Criteria": "\"7/3.5mm\" IS NOT NULL AND Surface = 'CW' AND Material = 2", "Title": "Narrow trench in CW- Unmade" },
+                    "Calculation6": { "Criteria": "\"7/3.5mm\" IS NOT NULL AND Surface = 'CW' AND Material = 3", "Title": "Narrow trench in CW- Tarmac" },
+                    "Calculation7": { "Criteria": "\"7/3.5mm\" IS NOT NULL AND Surface = 'CW' AND Material = 4", "Title": "Narrow trench in CW- Concrete" },
+                    "Calculation8": { "Criteria": "\"7/3.5mm\" IS NOT NULL AND Surface = 'CW' AND Material = 5", "Title": "Narrow trench in CW- Modular" },
+                    "Calculation9": { "Criteria": "\"110mm\" IS NOT NULL AND Surface = 'CW' AND Material = 2", "Title": "Traditional trench in CW- Unmade" },
+                    "Calculation10": { "Criteria": "\"110mm\" IS NOT NULL AND Surface = 'CW' AND Material = 3", "Title": "Traditional trench in CW- Tarmac" },
+                    "Calculation11": { "Criteria": "\"110mm\" IS NOT NULL AND Surface = 'CW' AND Material = 4", "Title": "Traditional trench in CW- Concrete" },
+                    "Calculation12": { "Criteria": "\"110mm\" IS NOT NULL AND Surface = 'CW' AND Material = 5", "Title": "Traditional trench in CW- Modular" },
+                    "SummaryType": "Length"
+                },
+                "Stat6a": {
+                    "Title": "New Civils (Counts)",
+                    "Layer":  "Duct",
+                    "Calculation0": { "Criteria": "Surface = 'Road Crossing'", "Title": "Quantity of road crossings" }
                 }
-            },
+                "Stat7": {
+                    "Title": "Chambers",
+                    "Layer": "Chambers",
+                    "Calculation0": { "Criteria": "Type = 1 AND Surface = 1", "Title": "FW2 in Verge" },
+                    "Calculation1": { "Criteria": "Type = 1 AND Surface = 2", "Title": "FW2 in Footway" },
+                    "Calculation2": { "Criteria": "Type = 2 AND Surface = 1", "Title": "FW4 in Verge" },
+                    "Calculation3": { "Criteria": "Type = 2 AND Surface = 2", "Title": "FW4 in Footway" },
+                    "Calculation4": { "Criteria": "Type = 3 AND Surface = 1", "Title": "FW6 in Verge" },
+                    "Calculation5": { "Criteria": "Type = 3 AND Surface = 2", "Title": "FW6 in Footway" },
+                    "Calculation6": { "Criteria": "Type = 4 AND Surface = 1", "Title": "FW10 in Verge" },
+                    "Calculation7": { "Criteria": "Type = 4 AND Surface = 2", "Title": "FW10 in Footway" },
+                    "Calculation8": { "Criteria": "Type = 5", "Title": "CW1" },
+                    "Calculation9": { "Criteria": "Surface = 1", "Title": "Subscriber feeds in Verge" },
+                    "Calculation10": { "Criteria": "Surface = 2", "Title": "Subscriber feeds in FW" },
+                    "Calculation11": { "Criteria": "Surface = 3", "Title": "Subscriber feeds in CW" },
+                    "Calculation12": { "Criteria": "State = 2", "Title": "Gel wrap" },
+                    "SummaryType": "Count"
+                },
+
+                "Stat8": {
+                    "Title": "Duct",
+                    "Layer": "Duct",
+                    "Calculation0": { "Criteria": "\"110mm\" IS NOT NULL", "Title": "110mm" },
+                    "Calculation1": { "Criteria": "\"12/8mm\" IS NOT NULL", "Title": "12/8mm" },
+                    "Calculation2": { "Criteria": "\"7/3.5mm\" IS NOT NULL", "Title": "7/3.5mm" },
+                    "SummaryType": "Length"
+                },
+
+                "Stat9": {
+                    "Title": "Joints",
+                    "Layer": "Joints",
+                    "Calculation0": { "Criteria": "Position = 1 AND Size = '144F'", "Title": "144F UG" },
+                    "Calculation1": { "Criteria": "Position = 1 AND Size = '96F'", "Title": "96F UG" },
+                    "Calculation2": { "Criteria": "Position = 1 AND Size = '48F'", "Title": "48F UG" },
+                    "Calculation3": { "Criteria": "Position = 2 AND Size = '48F'", "Title": "48F PM" },
+                    "SummaryType": "Count"
+                },
+
+
+                "Stat10": {
+                    "Title": "Cable Quantities",
+                    "Layer": "Cable",
+                    "Calculation0": { "Criteria": "Feed = 1 AND Type = 6", "Title": "144F Cable U/G" },
+                    "Calculation1": { "Criteria": "Feed = 1 AND Type = 5", "Title": "96F Cable U/G" },
+                    "Calculation2": { "Criteria": "Feed = 1 AND Type = 4", "Title": "48F Cable U/G" },
+                    "Calculation3": { "Criteria": "Feed = 2 AND Type = 4", "Title": "48F Cable Aerial" },
+                    "Calculation4": { "Criteria": "Feed = 1 AND Type = 2", "Title": "12F Cable U/G" },
+                    "Calculation5": { "Criteria": "Feed = 1 AND Type = 1", "Title": "1F Drop Cable U/G" },
+                    "Calculation6": { "Criteria": "Feed = 2 AND Type = 1", "Title": "1F Drop Cable Aerial" }
+                },
+
+                "Stat11": {
+                    "Title": "Poles",
+                    "Layer": "New pole",
+                    "Calculation0": { "Criteria": "Height = '8m' AND Class = 'L'", "Title": "8m Poles Light" },
+                    "Calculation1": { "Criteria": "Height = '8m' AND Class = 'M'", "Title": "8m Poles Medium" },
+                    "Calculation2": { "Criteria": "Height = '8m' AND Class = 'S'", "Title": "8m Poles Stout" },
+                    "Calculation3": { "Criteria": "Height = '9m' AND Class = 'L'", "Title": "9m Poles Light" },
+                    "Calculation4": { "Criteria": "Height = '9m' AND Class = 'M'", "Title": "9m Poles Medium" },
+                    "Calculation5": { "Criteria": "Height = '9m' AND Class = 'S'", "Title": "9m Poles Stout" },
+                    "Calculation6": { "Criteria": "Height = '10m' AND Class = 'L'", "Title": "10m Poles Light" },
+                    "Calculation7": { "Criteria": "Height = '10m' AND Class = 'M'", "Title": "10m Poles Medium" },
+                    "Calculation8": { "Criteria": "Height = '10m' AND Class = 'S'", "Title": "10m Poles Stout" },
+                    "Calculation9": { "Criteria": "Height = '11m' AND Class = 'L'", "Title": "11m Poles Light" },
+                    "Calculation10": { "Criteria": "Height = '11m' AND Class = 'M'", "Title": "11m Poles Medium" },
+                    "Calculation11": { "Criteria": "Height = '11m' AND Class = 'S'", "Title": "11m Poles Stout" },
+                    "Calculation12": { "Criteria": "Height = '12m' AND Class = 'L'", "Title": "12m Poles Light" },
+                    "Calculation13": { "Criteria": "Height = '12m' AND Class = 'M'", "Title": "12m Poles Medium" },
+                    "Calculation14": { "Criteria": "Height = '12m' AND Class = 'S'", "Title": "12m Poles Stout" }
+                }
+
+            }
+        },
         "BTPole": {
             "name": "BT Pole",
             "source": "./Shapefiles/BT Pole.shp",
@@ -195,7 +207,7 @@
                 "id": "OBJECT_ID",
                 "plantItem": "PLANT_ITEM"
             }
-        },       
+        },
         "Cabinet": {
             "name": "Cabinets",
             "source": "./Shapefiles/Cabinets.shp",
@@ -213,7 +225,7 @@
         },
         "Cable": {
             "name": "Cable",
-             "source": "./Shapefiles/Cable.shp",
+            "source": "./Shapefiles/Cable.shp",
             "fields": {
                 "id": "id",
                 "feed": "Feed",
@@ -263,20 +275,20 @@
             }
         },
         "Joint": {
-             "name": "Joints",
-             "source": "./Shapefiles/Joints.shp",
-             "fields": {
-                 "id": "Joint ID",
-                 "address": "Address",
-                 "position": "Position",
-                 "size": "Size",
-                 "comments": "Comments",
-                 "x": "X coord",
-                 "y": "Y coord",
-                 "loc": "LOC"
-             }
-         },
-         "JUPole": {
+            "name": "Joints",
+            "source": "./Shapefiles/Joints.shp",
+            "fields": {
+                "id": "Joint ID",
+                "address": "Address",
+                "position": "Position",
+                "size": "Size",
+                "comments": "Comments",
+                "x": "X coord",
+                "y": "Y coord",
+                "loc": "LOC"
+            }
+        },
+        "JUPole": {
             "name": "JU pole",
             "source": "./Shapefiles/Electricity Pole.shp",
             "fields": {
@@ -304,45 +316,45 @@
                 "loc": "LOC"
             }
         },
-         "Node": {
+        "Node": {
             "name": "Nodes",
             "source": "./Shapefiles/Nodes.shp",
             "fields": {
-                 "id": "Node ID",
-                 "splitters": "Splitters",
-                 "premises": "Premises",
-                 "address": "Address",
-                 "comments": "Comments",
-                 "loc": "LOC",
-                 "x": "X",
-                 "y": "Y",
-                 "use": "Use",
-                 "position": "Position"
+                "id": "Node ID",
+                "splitters": "Splitters",
+                "premises": "Premises",
+                "address": "Address",
+                "comments": "Comments",
+                "loc": "LOC",
+                "x": "X",
+                "y": "Y",
+                "use": "Use",
+                "position": "Position"
             }
-         },
-         "TopoArea": {
-             "name": "Topographic Area",
-             "source": "./Shapefiles/Topographic Area.shp|layername=Topographic Area",
-             "fields": {
-                 "fid": "fid",
-                 "featureCode": "featureCod",
-                 "versionNo": "version",
-                 "versionDate": "versionDat",
-                 "theme": "theme",
-                 "calcArea": "calculated",
-                 "changeDate": "changeDate",
-                 "changeReason": "reasonForC",
-                 "descriptiveGroup": "descriptiv",
-                 "descriptiveTerm": "descript_1",
-                 "make": "make",
-                 "physicalLevel": "physicalLe",
-                 "physicalPresence": "physicalPr"
-             }
-         },
-         "TopoLine": {
-             "name": "Topographicline",
-             "source": "./Shapefiles/Topographicline.shp|layername=Topographicline",
-             "fields": {
+        },
+        "TopoArea": {
+            "name": "Topographic Area",
+            "source": "./Shapefiles/Topographic Area.shp|layername=Topographic Area",
+            "fields": {
+                "fid": "fid",
+                "featureCode": "featureCod",
+                "versionNo": "version",
+                "versionDate": "versionDat",
+                "theme": "theme",
+                "calcArea": "calculated",
+                "changeDate": "changeDate",
+                "changeReason": "reasonForC",
+                "descriptiveGroup": "descriptiv",
+                "descriptiveTerm": "descript_1",
+                "make": "make",
+                "physicalLevel": "physicalLe",
+                "physicalPresence": "physicalPr"
+            }
+        },
+        "TopoLine": {
+            "name": "Topographicline",
+            "source": "./Shapefiles/Topographicline.shp|layername=Topographicline",
+            "fields": {
                 "fid": "fid",
                 "featureCode": "featureCod",
                 "versionNo": "version",
@@ -356,8 +368,8 @@
                 "make": "make",
                 "physicalLevel": "physicalLe",
                 "physicalPresence": "physicalPr"
-             }
-         }
+            }
+        }
     },
     "settings":{
         "connectNodeLayers": ["Cabinet","Node","Joint"],
