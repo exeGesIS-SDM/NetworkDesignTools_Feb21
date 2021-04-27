@@ -881,7 +881,7 @@ class NetworkDesignTools:
         if error_code == QgsVectorFileWriter.NoError:
             QMessageBox.information(self.iface.mainWindow(),'Network Design Toolkit', 'Release sheet file created.\n' + csvFileName , QMessageBox.Ok)
         else:
-            QMessageBox.critical(self.iface.mainWindow(),'Network Design Toolkit', 'Failed to create release sheet.\n{}: {}'.format(error_code, error_msg)
+            QMessageBox.critical(self.iface.mainWindow(),'Network Design Toolkit', 'Failed to create release sheet.\n{}: {}'.format(error_code, error_msg))
 
 # Map Tool Event Handlers
 
