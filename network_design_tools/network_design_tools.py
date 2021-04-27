@@ -27,8 +27,8 @@ from functools import partial
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, QVariant
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction, QMessageBox, QToolButton, QMenu, QFileDialog
-from qgis.core import QgsProject, QgsVectorLayer, QgsPoint, QgsField, \
-                      QgsFeatureRequest, QgsVectorLayerUtils, QgsGeometry, QgsPointXY, NULL
+from qgis.core import QgsProject, QgsVectorLayer, QgsPoint, QgsField, QgsProcessingFeatureSourceDefinition, \
+                      QgsFeatureRequest, QgsVectorLayerUtils, QgsGeometry, QgsPointXY, NULL, QgsVectorFileWriter, Qgis
 from qgis.utils import unloadPlugin
 import processing
 
@@ -324,7 +324,6 @@ class NetworkDesignTools:
     def selectDCObject(self, poleId, SNID):
         '''
         Prompt user to click on pole
-        Prompt user to click on secondary node(SN) polygon
         Select all address points in the SN
         For each address point:
         Draw a cable from the pole to the address point
@@ -354,6 +353,7 @@ class NetworkDesignTools:
 
         for feat in bdryLyr.getFeatures(QgsFeatureRequest(SNID)):
             bdryFeat = feat
+            bdryType = feat[layers['Boundaries']['fields']['type']]
 
         cableLyr = common.getLayerByName(self.iface, QgsProject.instance(), CableLayerName)
         if cableLyr is None:
@@ -366,11 +366,19 @@ class NetworkDesignTools:
         if cpLyr is None:
             return
 
-        #get the intersecting properties
-        processing.run("qgis:selectbylocation", {'INPUT':cpLyr, 'INTERSECT':tempLyr, 'METHOD':0, 'PREDICATE':[0]})
+        # Get the intersecting properties
+        processing.run("qgis:selectbylocation", {'INPUT':cpLyr, 'INTERSECT':tempLyr, 'METHOD':0, 'PREDICATE':[6]}) # 6 = Within
+        if bdryType in ('2', '3'): # UGSN / PMSN
+            processing.run("qgis:selectbylocation", {'INPUT':bdryLyr, 'INTERSECT':tempLyr, 'METHOD':0, 'PREDICATE':[5, 6]}) # 5 = Overlaps
+            bdryLyr.selectByExpression('\"{}\" in (\'4\', \'5\')'.format(layers['Boundaries']['fields']['type']), \
+                QgsVectorLayer.SelectBehavior.IntersectSelection)
+
+            if bdryLyr.selectedFeatureCount() > 0:
+                bdrySelLyr = QgsProcessingFeatureSourceDefinition(bdryLyr.source(), selectedFeaturesOnly = True)
+                processing.run("qgis:selectbylocation", { 'INPUT' : cpLyr, 'INTERSECT' : bdrySelLyr, 'METHOD' : 3, 'PREDICATE' : [6] }) # 3 = Remove from selection
+                bdryLyr.removeSelection()
 
         message = '%s properties have been found within the SN area. Do you want to draw cables?' % (cpLyr.selectedFeatureCount())
-        #print(message)
         reply = QMessageBox.question(self.iface.mainWindow(), 'Create Cables', message, QMessageBox.Yes, QMessageBox.No)
         if reply == QMessageBox.No:
             return
@@ -378,18 +386,24 @@ class NetworkDesignTools:
         # Initialise MastermapProcessing
         mp = MastermapProcessing(self.iface, 'TopoArea', bdryLyr, SNID)
 
-        for cpfeat in cpLyr.selectedFeatures(): #loop through the properties
+        cableFields = layers['Cable']['fields']
+        uprnField = layers['Premises']['fields']['uprn']
+        for cpfeat in cpLyr.selectedFeatures(): # Loop through the properties
             cable_pts = []
             cable_pts.append(QgsPoint(cpfeat.geometry().asPoint()))
             cable_pts.append(QgsPoint(Pole.geometry().asPoint()))
 
-            new_cable = mp.clipCableByBuilding(cpfeat.geometry(), QgsGeometry.fromPolyline(cable_pts))
+            new_cable = mp.clipCableByBuilding(cpfeat.geometry(), Pole.geometry(), QgsGeometry.fromPolyline(cable_pts))
 
             pc = QgsVectorLayerUtils.createFeature(cableLyr)
             pc.setGeometry(new_cable)
-            pc.setAttribute('Feed', '2') #Aerial
-            pc.setAttribute('Use', '1') #Access
+            pc.setAttribute(cableFields['feed'], '2') # Aerial
+            pc.setAttribute(cableFields['use'], '1') # Access
+            pc.setAttribute(cableFields['type'], '1') # 1F
+            pc.setAttribute(cableFields['uprn'], cpfeat[uprnField])
             cableLyr.dataProvider().addFeature(pc)
+        mp.removeSelection()
+        del mp
         cableLyr.triggerRepaint()
 
 
@@ -453,8 +467,6 @@ class NetworkDesignTools:
         #get the intersecting properties
         processing.run("qgis:selectbylocation", {'INPUT':cpLyr, 'INTERSECT':tempLyr, 'METHOD':0, 'PREDICATE':[0]})
         processing.run("qgis:selectbylocation", {'INPUT':bdryLyr, 'INTERSECT':tempLyr, 'METHOD':0, 'PREDICATE':[0]})
-
-        cp_dp = cpLyr.dataProvider()
 
         cpLyr.startEditing()
 
@@ -541,7 +553,7 @@ class NetworkDesignTools:
         processing.run("qgis:selectbylocation", {'INPUT':bdryLyr, 'INTERSECT':PNLyr, 'METHOD':0, 'PREDICATE':[0]})
 
         bdryLyr.selectByExpression('Type = 6', QgsVectorLayer.SelectBehavior.IntersectSelection)
-        
+
         #print ('bdryLyr selected ' + str(bdryLyr.selectedFeatureCount()))
 
         SNLyr = QgsVectorLayer("Polygon?crs=EPSG:27700", "Temp_Boundary", "memory")
@@ -629,10 +641,11 @@ class NetworkDesignTools:
                                 LOCFeatCount = 0
                                 for f in inLocLyr.selectedFeatures():
                                     LOCFeatCount += f.geometry().length()
-                            
+
                             buildableFeatCount = totalFeat - LOCFeatCount
 
-                            ans = common.writeToCSV(self.iface, csvFileName,{'Item': srchName, 'Quantity': str(totalFeat), 'Buildable': str(buildableFeatCount), 'In LOC': str(LOCFeatCount)}, isFirst)
+                            ans = common.writeToCSV(self.iface, csvFileName,{'Item': srchName, 'Quantity': str(totalFeat), \
+                                'Buildable': str(buildableFeatCount), 'In LOC': str(LOCFeatCount)}, isFirst)
 
                             j+=1
                             try:

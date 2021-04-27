@@ -1,4 +1,4 @@
-from qgis.core import QgsProject, QgsProcessingFeatureSourceDefinition, QgsGeometry, QgsPointXY
+from qgis.core import QgsProject, QgsProcessingFeatureSourceDefinition, QgsGeometry, QgsPointXY, QgsPoint
 from qgis.PyQt.QtWidgets import QMessageBox
 import processing
 from network_design_tools import common
@@ -38,15 +38,29 @@ class MastermapProcessing:
             QMessageBox.critical(self.iface.mainWindow(), "MasterMap Selection Failed", \
                     "Failed to select buildings within the selected boundary. Cables will not be clipped to buildings.")
 
-    def clipCableByBuilding(self, point, cable):
+    def removeSelection(self):
+        try:
+            self.initialised = True
+            if self.topoAreaLyr is None:
+                return
+
+            self.topoAreaLyr.removeSelection()
+        except Exception as e:
+            print(type(e), e)
+
+    def clipCableByBuilding(self, point, nodePoint, orig_cable):
         if not self.initialised:
             self.selectBuildingsWithinBoundary()
 
         if self.failedInitialisation:
-            return cable
+            return orig_cable
+
+        within_building = False
+        intersect_count = 0
 
         for b in self.topoAreaLyr.getSelectedFeatures():
             if b.geometry().contains(point):
+                within_building = True
                 geom = b.geometry()
                 if geom.isMultipart():
                     geom = geom.asGeometryCollection()[0]
@@ -58,13 +72,34 @@ class MastermapProcessing:
 
                 # Split cable
                 try:
-                    result, split_cable, _ = cable.splitGeometry(points, False)
+                    # Create a copy as splitGeometry modifies the input geometry
+                    new_cable = QgsGeometry(orig_cable)
+                    result, split_cable, _ = new_cable.splitGeometry(points, False)
                     if result == QgsGeometry.OperationResult.Success:
-                        cable = split_cable[-1]
+                        new_cable = split_cable[-1]
+                    else:
+                        new_cable = orig_cable
                 except Exception as e:
                     print(type(e), e)
+                    new_cable = orig_cable
 
-                return cable
+                # Replace point with nearest building point
+                try:
+                    nearest_point = geom.nearestPoint(nodePoint).asPoint()
+                    # Create a copy as moveVertex modifies the input geometry
+                    point_cable = QgsGeometry(orig_cable)
+                    result = point_cable.moveVertex(QgsPoint(nearest_point), 0)
+                except Exception as e:
+                    print(type(e), e)
+                    point_cable = orig_cable
+            else:
+                if b.geometry().intersects(orig_cable):
+                    intersect_count += 1
+
+        if within_building:
+            if intersect_count > 0:
+                return point_cable
+            return new_cable
 
         # Return original cable if does not intersect
-        return cable
+        return orig_cable
