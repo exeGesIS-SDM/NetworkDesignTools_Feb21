@@ -390,6 +390,7 @@
     },
     "settings":{
         "connectNodeLayers": ["Cabinet","Node","Joint"],
-        "nodeUseBdryTypeLUT": {"1":"1", "2":"2", "3":"3", "4":"5", "5":"4"}
+        "nodeUseBdryTypeLUT": {"1":"1", "2":"2", "3":"3", "4":"5", "5":"4"},
+        "releaseSheetFieldIndexList": "0,1,3,5,7,8,9,10,11,14,15,16,17,18,19,20,21"
     }
 }

@@ -276,6 +276,14 @@ class NetworkDesignTools:
             callback=self.CreateBillofQuantities,
             parent=self.iface.mainWindow())
 
+        self.add_action(
+            os.path.join(icons_folder,'release_sheet.png'),
+            text=self.tr(u'Create release sheet'),
+            add_to_menu=False,
+            location='Custom',
+            callback=self.CreateReleaseSheet,
+            parent=self.iface.mainWindow())
+
         #self.linkDCPolyTool.setAction(dropCableBtn)
 
         # Connect the handler for the linkDCTool click event
@@ -849,6 +857,31 @@ class NetworkDesignTools:
             self.iface.mapCanvas().setMapTool(self.connectNodesTool)
         else:
             self.connectNodesTool.reset()
+
+    def CreateReleaseSheet(self):
+        cpLyrName = common.prerequisites['layers']['Premises']['name']
+        cpLyr = common.getLayerByName(self.iface, QgsProject.instance(), cpLyrName, True)
+
+        startDir = QgsProject.instance().absolutePath()
+        csvFileName = QFileDialog.getSaveFileName(caption='Save Bill of Quantities As', filter='CSV (Comma delimited) (*.csv)', directory=startDir)[0]
+        if csvFileName == '':
+            return
+
+        fieldIndexList = common.prerequisites['settings']['releaseSheetIndexList']
+        indices = fieldIndexList.split(',')
+        attributeList = []
+        for index in indices:
+            attributeList.append(int(index))
+
+        if Qgis.QGIS_VERSION_INT > 31003:
+            errorCode, errorMsg = QgsVectorFileWriter.writeAsVectorFormatV2(cpLyr, csvFileName, "utf-8", None, "CSV", attributes=attributeList)
+        else:
+            errorCode, errorMsg = QgsVectorFileWriter.writeAsVectorFormat(cpLyr, csvFileName, "utf-8", None, "CSV", attributes=attributeList)
+
+        if error_code == QgsVectorFileWriter.NoError:
+            QMessageBox.information(self.iface.mainWindow(),'Network Design Toolkit', 'Release sheet file created.\n' + csvFileName , QMessageBox.Ok)
+        else:
+            QMessageBox.critical(self.iface.mainWindow(),'Network Design Toolkit', 'Failed to create release sheet.\n{}: {}'.format(error_code, error_msg)
 
 # Map Tool Event Handlers
 
