@@ -471,29 +471,26 @@ class NetworkDesignTools:
                     bdryType = bdryfeat['Type']
                     if bdryType == '1': # UGPN
                         cpfeat.setAttribute('PN', bdryfeat['Name'])
-                    elif bdryType == '2' or bdryType == '3': # UGSN or PMSN
+                    elif bdryType in ('2', '3'): # UGSN or PMSN
                         cpfeat.setAttribute('SN', bdryfeat['Name'])
-                    elif bdryType == '4': # UGCE ?
+                    elif bdryType in ('4', '5'): # UGCE or PMCE
                         cpfeat.setAttribute('TN', bdryfeat['Name'])
 
                     LOC = bdryfeat['LOC']
-                    if LOC != '6': # = 'N/A' Set the LOC to true if inside an LOC polygon, Set LOCType to the LOC type value
+                    if LOC != 'N/A': # = 'N/A' Set the LOC to true if inside an LOC polygon, Set LOCType to the LOC type value
                         cpfeat.setAttribute('LOC', 'Y')
 
-                        if LOC == '1': #Wayleave
-                            cpfeat.setAttribute('LOC_TYPE', 'WAY')
-                        elif LOC == '2': #Private Road
-                            cpfeat.setAttribute('LOC_TYPE', 'PRRD')
-                        elif LOC == '3': #Uneconomical
-                            cpfeat.setAttribute('LOC_TYPE', 'UEL')
-                        elif LOC == '4': #Section 58
-                            cpfeat.setAttribute('LOC_TYPE', 'UST')
-                        elif LOC == '5': #Conservation
-                            cpfeat.setAttribute('LOC_TYPE', 'OOS')
-
+                        if cpfeat['LOC_TYPE'] == NULL:
+                            cpfeat.setAttribute('LOC_TYPE', LOC)
+                        else:
+                            if LOC is not None:
+                                # Append to existing value
+                                cpfeat.setAttribute('LOC_TYPE', '{}; {}'.format(cpfeat['LOC_TYPE'], LOC))
                     cpLyr.updateFeature(cpfeat)
 
         cpLyr.commitChanges()
+        cpLyr.removeSelection()
+        bdryLyr.removeSelection()
 
 
     def CreateBillofQuantities(self):
