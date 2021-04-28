@@ -453,6 +453,11 @@ class NetworkDesignTools:
         if cpLyr is None:
             return
 
+        cableLayerName = layers['Cable']['name']
+        cableLyr = common.getLayerByName(self.iface, QgsProject.instance(), cableLayerName, True)
+        if cableLyr is None:
+            return
+
         #get the intersecting properties
         processing.run("qgis:selectbylocation", {'INPUT':cpLyr, 'INTERSECT':tempLyr, 'METHOD':0, 'PREDICATE':[0]})
         processing.run("qgis:selectbylocation", {'INPUT':bdryLyr, 'INTERSECT':tempLyr, 'METHOD':0, 'PREDICATE':[0]})
@@ -486,6 +491,13 @@ class NetworkDesignTools:
                             if LOC is not None:
                                 # Append to existing value
                                 cpfeat.setAttribute('LOC_TYPE', '{}; {}'.format(cpfeat['LOC_TYPE'], LOC))
+
+                    #update CP with length of cable
+                    processing.run("qgis:selectbyexpression", {'INPUT':cableLyr, 'EXPRESSION':'UPRN = {}'.format(cpfeat['UPRN']), 'METHOD':0})
+                    if cableLyr.selectedFeatureCount() > 0:
+                        clength = cableLyr.selectedFeatures()[0].geometry().length()
+                        cpfeat.setAttribute('Distance', clength)
+
                     cpLyr.updateFeature(cpfeat)
 
         cpLyr.commitChanges()
@@ -658,26 +670,7 @@ class NetworkDesignTools:
             except:
                 searchLayer = ""
 
-        #select all properties overlapping
-    #    bldLayerName = layers['Premises']['name']
-    #    cpLyr = common.getLayerByName(self.iface, QgsProject.instance(), bldLayerName, True)
-    #    processing.run("qgis:selectbylocation", {'INPUT':cpLyr, 'INTERSECT':tempLyr, 'METHOD':0, 'PREDICATE':[0]})
 
-        #add Premises FED total | cpLyr.selectedFeatureCount()
-        #to a csv
-        #BillofQuantites
-
-        #csvData = []
-
-        #csvData.append({'Item':'Premises FED total', 'Quantity': str(cpLyr.selectedFeatureCount())})
-
-        #csvData.append({'Item':'Premises aerially fed', 'Quantity': str(cpLyr.selectedFeatureCount())})
-
-
-    #    ans = writeToCSV(self.iface, csvFileName,{'Item':'Premises FED total', 'Quantity': str(cpLyr.selectedFeatureCount())}, True)
-    #    ans = writeToCSV(self.iface, csvFileName,{'Item':'Premises aerially fed', 'Quantity': str(cpLyr.selectedFeatureCount())})
-
-        #ans = writeToCSV(self.iface, csvFileName,csvData)
 
         QMessageBox.information(self.iface.mainWindow(),'Network Design Toolkit', 'Bill of quantities file created.\n' + csvFileName , QMessageBox.Ok)
 
