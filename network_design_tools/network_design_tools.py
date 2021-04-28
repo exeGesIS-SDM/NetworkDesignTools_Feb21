@@ -27,8 +27,9 @@ from functools import partial
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, QVariant
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction, QMessageBox, QToolButton, QMenu, QFileDialog
-from qgis.core import QgsProject, QgsVectorLayer, QgsPoint, QgsField, \
-                      QgsFeatureRequest, QgsVectorLayerUtils, QgsGeometry, QgsPointXY, NULL
+from qgis.core import QgsProject, QgsVectorLayer, QgsPoint, QgsField, QgsProcessingFeatureSourceDefinition, \
+                      QgsFeatureRequest, QgsVectorLayerUtils, QgsGeometry, QgsPointXY, NULL, QgsVectorFileWriter, \
+                      Qgis, QgsCoordinateTransformContext
 from qgis.utils import unloadPlugin
 import processing
 
@@ -412,41 +413,21 @@ class NetworkDesignTools:
         '''
 
         layers = common.prerequisites['layers']
-        bdryLayerName = layers['Boundaries']['name']
         AddressLayerName = layers['Premises']['name']
 
-        bdryLyr = self.iface.mapCanvas().currentLayer()
-
+        bdryLyr, bdryFeat = self.getSelectedBoundary()
         if bdryLyr is None:
             return
-
-        if bdryLyr.name() != bdryLayerName:
-            errMsg = "You must select a polygon from the " + bdryLayerName + " layer."
-            errTitle = 'Wrong layer selected: ' + bdryLyr.name()
-            QMessageBox.critical(self.iface.mainWindow(), errTitle, errMsg)
+        if bdryFeat is None:
             return
 
-        errMsg = "You must select a single polygon from the " + bdryLayerName + " layer."
-        if bdryLyr.selectedFeatureCount() == 0:
-            errTitle = "No polygon selected"
-            QMessageBox.critical(self.iface.mainWindow(), errTitle, errMsg)
-            return
-        elif bdryLyr.selectedFeatureCount() > 1:
-            errMsg = "You must select a single polygon from the " + bdryLayerName + " layer."
-            errTitle = "Multiple polygons selected"
-            QMessageBox.critical(self.iface.mainWindow(), errTitle, errMsg)
-            return
-
-        bdryFeat = bdryLyr.selectedFeatures()[0]
         if bdryFeat['Type'] != '1':
-            print (bdryFeat['Type'])
-            errMsg = "You must select a Primary node polygon from the " + bdryLayerName + " layer."
-            errTitle = "Wrong polygon selected"
-            QMessageBox.critical(self.iface.mainWindow(), errTitle, errMsg)
+            QMessageBox.critical(self.iface.mainWindow(), "Wrong polygon selected", \
+                "You must select a Primary node polygon from the " + bdryLyr.name() + " layer.")
             return
 
         reply = QMessageBox.question(self.iface.mainWindow(),'Network Design Toolkit', \
-            'Update {} layer with values from {}?'.format(AddressLayerName,bdryLayerName))
+            'Update {} layer with values from {}?'.format(AddressLayerName, bdryLyr.name()))
         if reply == QMessageBox.No:
             return
 
@@ -505,33 +486,14 @@ class NetworkDesignTools:
 
     def CreateBillofQuantities(self):
         layers = common.prerequisites['layers']
-        bdryLayerName = layers['Boundaries']['name']
-        bdryLyr = self.iface.mapCanvas().currentLayer()
+        bdryLyr, bdryFeat = self.getSelectedBoundary()
         if bdryLyr is None:
             return
-
-        if bdryLyr.name() != bdryLayerName:
-            errMsg = "You must select a polygon from the " + bdryLayerName + " layer."
-            errTitle = 'Wrong layer selected: ' + bdryLyr.name()
-            QMessageBox.critical(self.iface.mainWindow(), errTitle, errMsg)
+        if bdryFeat is None:
             return
 
-        errMsg = "You must select a single polygon from the " + bdryLayerName + " layer."
-        if bdryLyr.selectedFeatureCount() == 0:
-            errTitle = "No polygons selected"
-            QMessageBox.critical(self.iface.mainWindow(), errTitle, errMsg)
-            return
-        elif bdryLyr.selectedFeatureCount() > 1:
-            errTitle = "Multiple polygons selected"
-            QMessageBox.critical(self.iface.mainWindow(), errTitle, errMsg)
-            return
-
-        bdryFeat = bdryLyr.selectedFeatures()[0]
         if bdryFeat['Type'] != '1':
-            print (bdryFeat['Type'])
-            errMsg = "You must select a Primary node polygon from the " + bdryLayerName + " layer."
-            errTitle = "Wrong polygon selected"
-            QMessageBox.critical(self.iface.mainWindow(), errTitle, errMsg)
+            QMessageBox.critical(self.iface.mainWindow(), "Wrong polygon selected", "You must select a Primary node polygon from the " + bdryLyr.name() + " layer.")
             return
 
 
@@ -547,10 +509,7 @@ class NetworkDesignTools:
 
         #get the secondary boundaries, where LOC <> N/A, for calculating LOC values
         processing.run("qgis:selectbylocation", {'INPUT':bdryLyr, 'INTERSECT':PNLyr, 'METHOD':0, 'PREDICATE':[0]})
-
-        bdryLyr.selectByExpression('Type = 6', QgsVectorLayer.SelectBehavior.IntersectSelection)
-        
-        #print ('bdryLyr selected ' + str(bdryLyr.selectedFeatureCount()))
+        bdryLyr.selectByExpression('\"Type\" != \'N/A\'', QgsVectorLayer.SelectBehavior.IntersectSelection)
 
         SNLyr = QgsVectorLayer("Polygon?crs=EPSG:27700", "Temp_Boundary", "memory")
         SNLyr.dataProvider().addFeatures(bdryLyr.selectedFeatures())
@@ -637,10 +596,11 @@ class NetworkDesignTools:
                                 LOCFeatCount = 0
                                 for f in inLocLyr.selectedFeatures():
                                     LOCFeatCount += f.geometry().length()
-                            
+
                             buildableFeatCount = totalFeat - LOCFeatCount
 
-                            ans = common.writeToCSV(self.iface, csvFileName,{'Item': srchName, 'Quantity': str(totalFeat), 'Buildable': str(buildableFeatCount), 'In LOC': str(LOCFeatCount)}, isFirst)
+                            ans = common.writeToCSV(self.iface, csvFileName,{'Item': srchName, 'Quantity': str(totalFeat), \
+                                'Buildable': str(buildableFeatCount), 'In LOC': str(LOCFeatCount)}, isFirst)
 
                             j+=1
                             try:
@@ -715,25 +675,13 @@ class NetworkDesignTools:
 
     def CreatePropertyCountLayer(self):
         layers = common.prerequisites['layers']
-        bdryLayerName = layers['Boundaries']['name']
-        bdryLyr = self.iface.mapCanvas().currentLayer()
+        bdryLyr, bdryFeat = self.getSelectedBoundary()
         if bdryLyr is None:
             return
-
-        if bdryLyr.name() != bdryLayerName:
-            errMsg = "You must select a polygon from the " + bdryLayerName + " layer."
-            errTitle = 'Wrong layer selected: ' + bdryLyr.name()
-            QMessageBox.critical(self.iface.mainWindow(), errTitle, errMsg)
-            return
-
-        if bdryLyr.selectedFeatureCount() > 1:
-            errMsg = "You must select a single polygon from the " + bdryLayerName + " layer."
-            errTitle = "Multiple polygons selected"
-            QMessageBox.critical(self.iface.mainWindow(), errTitle, errMsg)
+        if bdryFeat is None:
             return
 
         #select all properties overlapping
-        bdryFeat = bdryLyr.selectedFeatures()[0]
         tempLyr = QgsVectorLayer("Polygon?crs=EPSG:27700", "Temp_Boundary", "memory")
         tempLyr.dataProvider().addFeature(bdryFeat)
 
@@ -802,24 +750,11 @@ class NetworkDesignTools:
     def CountPropertiesInAPoly(self):
         """ The user should already have a polygon selected.
             Ensure this is the case and then send the geometry to the main function. """
-        errMsg = 'Please select a single polygon feature in an active layer.'
-
-        bdryLyr = self.iface.mapCanvas().currentLayer()
+        bdryLyr, bdryFeat = self.getSelectedBoundary(True)
         if bdryLyr is None:
-            QMessageBox.critical(self.iface.mainWindow(), 'No active layer', errMsg)
             return
-        if bdryLyr.selectedFeatureCount() == 0:
-            errTitle = 'No feature selected'
-            QMessageBox.critical(self.iface.mainWindow(), errTitle, errMsg)
+        if bdryFeat is None:
             return
-        elif bdryLyr.selectedFeatureCount() > 1:
-            errTitle = "Multiple polygons selected"
-            QMessageBox.critical(self.iface.mainWindow(), errTitle, errMsg)
-            return
-
-        # By this point the user has a single, existing feature selected
-        # Now pass the geometry to the query
-        bdryFeat = bdryLyr.selectedFeatures()[0]
 
         tempLyr = QgsVectorLayer("Polygon?crs=EPSG:27700", "Temp_Boundary", "memory")
         tempLyr.dataProvider().addFeature(bdryFeat)
@@ -859,29 +794,53 @@ class NetworkDesignTools:
             self.connectNodesTool.reset()
 
     def CreateReleaseSheet(self):
+        bdryLyr, bdryFeat = self.getSelectedBoundary()
+        if bdryLyr is None:
+            return
+        if bdryFeat is None:
+            return
+
+        if bdryFeat['Type'] != '1':
+            QMessageBox.critical(self.iface.mainWindow(), "Wrong polygon selected", \
+                "You must select a Primary node polygon from the " + bdryLyr.name() + " layer.")
+            return
+
         cpLyrName = common.prerequisites['layers']['Premises']['name']
         cpLyr = common.getLayerByName(self.iface, QgsProject.instance(), cpLyrName, True)
 
+        bdrySelLyr = QgsProcessingFeatureSourceDefinition(bdryLyr.source(), selectedFeaturesOnly = True)
+        processing.run("qgis:selectbylocation", { 'INPUT' : cpLyr, 'INTERSECT' : bdrySelLyr, 'METHOD' : 0, 'PREDICATE' : [6] })
+        bdryLyr.removeSelection()
+
+        if cpLyr.selectedFeatureCount() == 0:
+            QMessageBox.critical(self.iface.mainWindow(), "No premises selected", "No premises were found within the selected boundary")
+            return
+
         startDir = QgsProject.instance().absolutePath()
-        csvFileName = QFileDialog.getSaveFileName(caption='Save Bill of Quantities As', filter='CSV (Comma delimited) (*.csv)', directory=startDir)[0]
+        csvFileName = QFileDialog.getSaveFileName(caption='Save Release Sheet As', filter='CSV (Comma delimited) (*.csv)', directory=startDir)[0]
         if csvFileName == '':
             return
 
-        fieldIndexList = common.prerequisites['settings']['releaseSheetIndexList']
+        fieldIndexList = common.prerequisites['settings']['releaseSheetFieldIndexList']
         indices = fieldIndexList.split(',')
         attributeList = []
         for index in indices:
             attributeList.append(int(index))
 
         if Qgis.QGIS_VERSION_INT > 31003:
-            errorCode, errorMsg = QgsVectorFileWriter.writeAsVectorFormatV2(cpLyr, csvFileName, "utf-8", None, "CSV", attributes=attributeList)
+            saveOptions = QgsVectorFileWriter.SaveVectorOptions()
+            saveOptions.attributes = attributeList
+            saveOptions.driverName = "CSV"
+            saveOptions.fileEncoding = "utf-8"
+            saveOptions.onlySelectedFeatures = True
+            errorCode, errorMsg = QgsVectorFileWriter.writeAsVectorFormatV2(cpLyr, csvFileName, QgsCoordinateTransformContext(), saveOptions)
         else:
-            errorCode, errorMsg = QgsVectorFileWriter.writeAsVectorFormat(cpLyr, csvFileName, "utf-8", None, "CSV", attributes=attributeList)
+            errorCode, errorMsg = QgsVectorFileWriter.writeAsVectorFormat(cpLyr, csvFileName, "utf-8", None, "CSV", onlySelected=True, attributes=attributeList)
 
-        if error_code == QgsVectorFileWriter.NoError:
+        if errorCode == QgsVectorFileWriter.NoError:
             QMessageBox.information(self.iface.mainWindow(),'Network Design Toolkit', 'Release sheet file created.\n' + csvFileName , QMessageBox.Ok)
         else:
-            QMessageBox.critical(self.iface.mainWindow(),'Network Design Toolkit', 'Failed to create release sheet.\n{}: {}'.format(error_code, error_msg))
+            QMessageBox.critical(self.iface.mainWindow(),'Network Design Toolkit', 'Failed to create release sheet.\n{}: {}'.format(errorCode, errorMsg))
 
 # Map Tool Event Handlers
 
@@ -899,3 +858,34 @@ class NetworkDesignTools:
     def resetConnectNodesTool(self):
         self.routingType = None
         self.cableToolButton.setDown(False)
+
+# Generic methods
+
+    def getSelectedBoundary(self, currentLayer=False):
+        if currentLayer:
+            bdryLyr = self.iface.mapCanvas().currentLayer()
+            errTitle = 'No active layer'
+            errMsg = 'Please select a single polygon feature in an active layer.'
+        else:
+            layers = common.prerequisites['layers']
+            bdryLayerName = layers['Boundaries']['name']
+            bdryLyr = common.getLayerByName(self.iface, QgsProject.instance(), bdryLayerName)
+            errTitle = 'No {} layer'.format(bdryLayerName)
+            errMsg = "Please select a single polygon from the " + bdryLayerName + " layer."
+
+        if bdryLyr is None:
+            QMessageBox.critical(self.iface.mainWindow(), errTitle, errMsg)
+            return None, None
+
+        if bdryLyr.selectedFeatureCount() == 0:
+            errTitle = "No polygon selected"
+            QMessageBox.critical(self.iface.mainWindow(), errTitle, errMsg)
+            return None, None
+        elif bdryLyr.selectedFeatureCount() > 1:
+            errTitle = "Multiple polygons selected"
+            QMessageBox.critical(self.iface.mainWindow(), errTitle, errMsg)
+            return None, None
+
+        bdryFeat = bdryLyr.selectedFeatures()[0]
+
+        return bdryLyr, bdryFeat
