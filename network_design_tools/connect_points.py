@@ -54,24 +54,21 @@ def createNodeCable(iface, routingType, startPoint, startLayerName, startFid, en
     cableLyr.startEditing()
     try:
         if routingType == 'UG':
-            # Select BT Ducts/110mm client ducts and route via duct
-            expr = '"{}" = \'DUCT\' OR "{}" IS NOT NULL'.format(layers['BTDuct']['fields']['plantItem'], layers['Duct']['fields']['110mm'])
-            mergedDuctLyr.selectByExpression(expr)
             QgsProject.instance().addMapLayer(mergedDuctLyr)
-            selDuctLyr = QgsProcessingFeatureSourceDefinition(mergedDuctLyr.source(), selectedFeaturesOnly = True)
-
+            
             start = '{}, {} [{}]'.format(startPoint.x(), startPoint.y(), QgsProject.instance().crs().authid())
             end = '{}, {} [{}]'.format(endPoint.x(), endPoint.y(), QgsProject.instance().crs().authid())
-            result = processing.run("native:shortestpathpointtopoint", { 'DEFAULT_DIRECTION' : 2, 'DEFAULT_SPEED' : 50, 'DIRECTION_FIELD' : '', \
-                            'START_POINT' : start, 'END_POINT' : end, 'INPUT' : selDuctLyr, 'OUTPUT' : 'TEMPORARY_OUTPUT', \
-                            'SPEED_FIELD' : '', 'STRATEGY' : 0, 'TOLERANCE' : 0.1, 'VALUE_BACKWARD' : '', 'VALUE_BOTH' : '', 'VALUE_FORWARD' : '' })
+            print('start: ', start, ' end: ', end)
+            result = processing.run("native:shortestpathpointtopoint", { 'DEFAULT_DIRECTION' : 2, 'DEFAULT_SPEED' : 50, 'DIRECTION_FIELD' : None, \
+                            'START_POINT' : start, 'END_POINT' : end, 'INPUT' : mergedDuctLyr, 'OUTPUT' : 'TEMPORARY_OUTPUT', \
+                            'SPEED_FIELD' : None, 'STRATEGY' : 0, 'TOLERANCE' : 0.1, 'VALUE_BACKWARD' : '', 'VALUE_BOTH' : '', 'VALUE_FORWARD' : '' })
 
             for c in result['OUTPUT'].getFeatures():
                 feat = QgsVectorLayerUtils.createFeature(cableLyr)
                 feat.setGeometry(c.geometry())
                 feat.setAttribute(cableFields['feed'], 1) # U/G
                 feat.setAttribute(cableFields['use'], 2) # Distribution
-                feat.setAttribute(cableFields['type'], 2) # 12F
+                feat.setAttribute(cableFields['type'], 4) # 48F
                 feat.setAttribute(cableFields['name'], cableName)
                 cableLyr.addFeature(feat)
         else:
@@ -80,7 +77,7 @@ def createNodeCable(iface, routingType, startPoint, startLayerName, startFid, en
             feat.setGeometry(c)
             feat.setAttribute(cableFields['feed'], 2) # Aerial
             feat.setAttribute(cableFields['use'], 2) # Distribution
-            feat.setAttribute(cableFields['type'], 2) # 12F
+            feat.setAttribute(cableFields['type'], 4) # 48F
             feat.setAttribute(cableFields['name'], cableName)
             cableLyr.addFeature(feat)
         result = iface.openFeatureForm(cableLyr, feat, False, showModal = True)
