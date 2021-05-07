@@ -1,25 +1,25 @@
-from qgis.PyQt.QtWidgets import QMessageBox
-import configparser as cp
 import os.path
-import uuid
-import requests
 import json
 import csv
+from qgis.PyQt.QtWidgets import QMessageBox
+
+prerequisites = {}
 
 def initPrerequisites(iface):
     """ Fetch prerequisites from webservice or file or show error if not available """
     global prerequisites
-    # Initialise so always available 
+    # Initialise so always available
     prerequisites = {}
-    
+
     # File implementation
-    json_path = os.path.join(os.path.dirname(__file__), 'prerequisites.json') 
-    
+    json_path = os.path.join(os.path.dirname(__file__), 'prerequisites.json')
+
     try:
         with open(json_path) as json_file:
             prerequisites = json.load(json_file)
     except:
-        QMessageBox.critical(iface.mainWindow(), 'Prerequisites not found or invalid', 'The prerequisites file ({}) could not be found or is not valid. Please check and try again.'.format(json_path))
+        QMessageBox.critical(iface.mainWindow(), 'Prerequisites not found or invalid', \
+            'The prerequisites file ({}) could not be found or is not valid. Please check and try again.'.format(json_path))
 
 
 def getLayerByName(iface, project, layerName, showMessage = True):
@@ -28,7 +28,7 @@ def getLayerByName(iface, project, layerName, showMessage = True):
         return layer
     except:
         if showMessage:
-            QMessageBox.critical(iface.mainWindow(), 'Layer not found', 'The {0} layer could not be found. Please ensure the NetworkDesignTool project is open.'.format(layerName))
+            QMessageBox.critical(iface.mainWindow(), 'Layer not found', 'The {0} layer could not be found. Please ensure the layer is open.'.format(layerName))
         return None
 
 def writeToCSV(iface, csvfilename, writeThis, isFirstRow = False):

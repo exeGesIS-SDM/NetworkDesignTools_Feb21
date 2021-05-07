@@ -9,5 +9,8 @@
         <file>icons/cable_add.png</file>
         <file>icons/aerial_cable_add.png</file>
         <file>icons/release_sheet.png</file>
+        <file>icons/houses_update.png</file>
+        <file>icons/node_update.png</file>
+        <file>icons/sld.png</file>
     </qresource>
 </RCC>

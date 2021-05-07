@@ -21,16 +21,17 @@
  *                                                                         *
  ***************************************************************************/
 """
-import os.path
+import os
 
 from functools import partial
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, QVariant
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction, QMessageBox, QToolButton, QMenu, QFileDialog
 from qgis.core import QgsProject, QgsVectorLayer, QgsPoint, QgsField, QgsProcessingFeatureSourceDefinition, \
-                      QgsFeatureRequest, QgsVectorLayerUtils, QgsGeometry, QgsPointXY, NULL, QgsVectorFileWriter, \
+                      QgsFeatureRequest, QgsVectorLayerUtils, QgsGeometry, QgsPointXY, QgsVectorFileWriter, \
                       Qgis, QgsCoordinateTransformContext
 from qgis.utils import unloadPlugin
+from graphviz import Graph
 import processing
 
 # Import generic functions
@@ -43,6 +44,7 @@ from .map_tools import SelectDCMapTool, ConnectNodesMapTool
 #from .property_count_dialog import PropertyCountDialog
 # Import the code to connect nodes
 from .connect_points import createNodeCable
+from .update_attributes import updateNodeAttributes, updatePremisesAttributes
 from .mm_processing import MastermapProcessing
 
 class NetworkDesignTools:
@@ -92,6 +94,14 @@ class NetworkDesignTools:
         self.toolbar = self.iface.addToolBar(u'NetworkDesignTools')
         self.toolbar.setObjectName(u'Network Design Tools')
         self.routingType = None
+
+        self.enableSLD = True
+        graphvizPath = common.prerequisites['settings']['graphvizBinPath']
+        if os.path.exists(graphvizPath):
+            os.environ['PATH'] += os.pathsep + graphvizPath
+        else:
+            QMessageBox.critical(iface.mainWindow(), 'Directory not found', 'The {0} directory could not be found. The SLD tool will be disabled.'.format(graphvizPath))
+            self.enableSLD = False
 
         # Check if plugin was started the first time in current QGIS session
         # Must be set in initGui() to survive plugin reloads
@@ -262,11 +272,19 @@ class NetworkDesignTools:
         self.linkDCBtn.setCheckable(True)
 
         self.add_action(
-            os.path.join(icons_folder,'graphics-tablet.png'),
+            os.path.join(icons_folder,'houses_update.png'),
             text=self.tr(u'Premises attribute update'),
             add_to_menu=False,
             location='Custom',
-            callback=self.UpdateAttributes,
+            callback=self.UpdatePremisesAttributes,
+            parent=self.iface.mainWindow())
+
+        self.add_action(
+            os.path.join(icons_folder,'node_update.png'),
+            text=self.tr(u'Nodes attribute update'),
+            add_to_menu=False,
+            location='Custom',
+            callback=self.UpdateNodeAttributes,
             parent=self.iface.mainWindow())
 
         self.add_action(
@@ -284,6 +302,15 @@ class NetworkDesignTools:
             location='Custom',
             callback=self.CreateReleaseSheet,
             parent=self.iface.mainWindow())
+
+        sld = self.add_action(
+            os.path.join(icons_folder,'sld.png'),
+            text=self.tr(u'Create straight line diagram'),
+            add_to_menu=False,
+            location='Custom',
+            callback=self.CreateSLD,
+            parent=self.iface.mainWindow())
+        sld.setEnabled = self.enableSLD
 
         #self.linkDCPolyTool.setAction(dropCableBtn)
 
@@ -416,15 +443,15 @@ class NetworkDesignTools:
         cableLyr.triggerRepaint()
 
 
-    def UpdateAttributes(self):
-        '''
+    def UpdatePremisesAttributes(self):
+        """
             check that selected poly is a PN
             select all addresspoints in it (customer properties?)
             update each addresspoint with AC??? SN TN LOC?
-            Set the Length field to the length of the supply drop cable ?
+            Set the Length field to the length of the supply drop cable
             add these fields if not exist already?
             can this be done automatically?
-        '''
+        """
 
         layers = common.prerequisites['layers']
         AddressLayerName = layers['Premises']['name']
@@ -445,65 +472,11 @@ class NetworkDesignTools:
         if reply == QMessageBox.No:
             return
 
+        updatePremisesAttributes(self.iface, bdryLyr)
 
-        tempLyr = QgsVectorLayer("Polygon?crs=EPSG:27700", "Temp_Boundary", "memory")
-        tempLyr.dataProvider().addFeature(bdryFeat)
-
-        cpLyr = common.getLayerByName(self.iface, QgsProject.instance(), AddressLayerName, True)
-        if cpLyr is None:
-            return
-
-        cableLayerName = layers['Cable']['name']
-        cableLyr = common.getLayerByName(self.iface, QgsProject.instance(), cableLayerName, True)
-        if cableLyr is None:
-            return
-
-        #get the intersecting properties
-        processing.run("qgis:selectbylocation", {'INPUT':cpLyr, 'INTERSECT':tempLyr, 'METHOD':0, 'PREDICATE':[0]})
-        processing.run("qgis:selectbylocation", {'INPUT':bdryLyr, 'INTERSECT':tempLyr, 'METHOD':0, 'PREDICATE':[0]})
-
-        cpLyr.startEditing()
-
-        for cpfeat in cpLyr.selectedFeatures(): #set all to No first, then ignore any n/a=6
-            cpfeat.setAttribute('LOC', 'N')
-            cpfeat.setAttribute('LOC_TYPE', NULL)
-            cpLyr.updateFeature(cpfeat)
-
-        for bdryfeat in bdryLyr.selectedFeatures():
-            for cpfeat in cpLyr.selectedFeatures():
-                if cpfeat.geometry().intersects(bdryfeat.geometry()):
-
-                    bdryType = bdryfeat['Type']
-                    if bdryType == '1': # UGPN
-                        cpfeat.setAttribute('PN', bdryfeat['Name'])
-                    elif bdryType in ('2', '3'): # UGSN or PMSN
-                        cpfeat.setAttribute('SN', bdryfeat['Name'])
-                    elif bdryType in ('4', '5'): # UGCE or PMCE
-                        cpfeat.setAttribute('TN', bdryfeat['Name'])
-
-                    LOC = bdryfeat['LOC']
-                    if LOC != 'N/A': # = 'N/A' Set the LOC to true if inside an LOC polygon, Set LOCType to the LOC type value
-                        cpfeat.setAttribute('LOC', 'Y')
-
-                        if cpfeat['LOC_TYPE'] == NULL:
-                            cpfeat.setAttribute('LOC_TYPE', LOC)
-                        else:
-                            if LOC is not None:
-                                # Append to existing value
-                                cpfeat.setAttribute('LOC_TYPE', '{}; {}'.format(cpfeat['LOC_TYPE'], LOC))
-
-                    #update CP with length of cable
-                    processing.run("qgis:selectbyexpression", {'INPUT':cableLyr, 'EXPRESSION':'UPRN = {}'.format(cpfeat['UPRN']), 'METHOD':0})
-                    if cableLyr.selectedFeatureCount() > 0:
-                        clength = cableLyr.selectedFeatures()[0].geometry().length()
-                        cpfeat.setAttribute('Distance', clength)
-
-                    cpLyr.updateFeature(cpfeat)
-
-        cpLyr.commitChanges()
-        cpLyr.removeSelection()
-        bdryLyr.removeSelection()
-
+    def UpdateNodeAttributes(self):
+        """ Update premises/address attributes for nodes """
+        updateNodeAttributes(self.iface)
 
     def CreateBillofQuantities(self):
         layers = common.prerequisites['layers']
@@ -670,7 +643,26 @@ class NetworkDesignTools:
             except:
                 searchLayer = ""
 
+        #select all properties overlapping
+    #    bldLayerName = layers['Premises']['name']
+    #    cpLyr = common.getLayerByName(self.iface, QgsProject.instance(), bldLayerName, True)
+    #    processing.run("qgis:selectbylocation", {'INPUT':cpLyr, 'INTERSECT':tempLyr, 'METHOD':0, 'PREDICATE':[0]})
 
+        #add Premises FED total | cpLyr.selectedFeatureCount()
+        #to a csv
+        #BillofQuantites
+
+        #csvData = []
+
+        #csvData.append({'Item':'Premises FED total', 'Quantity': str(cpLyr.selectedFeatureCount())})
+
+        #csvData.append({'Item':'Premises aerially fed', 'Quantity': str(cpLyr.selectedFeatureCount())})
+
+
+    #    ans = writeToCSV(self.iface, csvFileName,{'Item':'Premises FED total', 'Quantity': str(cpLyr.selectedFeatureCount())}, True)
+    #    ans = writeToCSV(self.iface, csvFileName,{'Item':'Premises aerially fed', 'Quantity': str(cpLyr.selectedFeatureCount())})
+
+        #ans = writeToCSV(self.iface, csvFileName,csvData)
 
         QMessageBox.information(self.iface.mainWindow(),'Network Design Toolkit', 'Bill of quantities file created.\n' + csvFileName , QMessageBox.Ok)
 
@@ -843,6 +835,34 @@ class NetworkDesignTools:
             QMessageBox.information(self.iface.mainWindow(),'Network Design Toolkit', 'Release sheet file created.\n' + csvFileName , QMessageBox.Ok)
         else:
             QMessageBox.critical(self.iface.mainWindow(),'Network Design Toolkit', 'Failed to create release sheet.\n{}: {}'.format(errorCode, errorMsg))
+
+    def CreateSLD(self):
+        bdryLyr, bdryFeat = self.getSelectedBoundary()
+        if bdryLyr is None:
+            return
+        if bdryFeat is None:
+            return
+
+        if bdryFeat['Type'] != '1':
+            QMessageBox.critical(self.iface.mainWindow(), "Wrong polygon selected", \
+                "You must select a Primary node polygon from the " + bdryLyr.name() + " layer.")
+            return
+
+        start_dir = QgsProject.instance().absolutePath()
+        file_name = QFileDialog.getSaveFileName(caption='Save SLD As', filter='SVG (Scalable Vector Graphics) (*.svg)', directory=start_dir)[0]
+        if len(file_name) == 0:
+            return
+        dir_name = os.path.dirname(file_name)
+        if not os.path.exists(dir_name):
+            os.makedirs(dir_name)
+
+        g = Graph('SLD', filename=os.path.splitext(os.path.basename(file_name))[0], directory=dir_name, format='svg')
+
+        # Add primary node
+
+        # Add secondary nodes
+
+        # Add tertiary nodes
 
 # Map Tool Event Handlers
 
