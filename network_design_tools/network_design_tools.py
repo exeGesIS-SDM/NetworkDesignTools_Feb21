@@ -31,7 +31,6 @@ from qgis.core import QgsProject, QgsVectorLayer, QgsPoint, QgsField, QgsProcess
                       QgsFeatureRequest, QgsVectorLayerUtils, QgsGeometry, QgsPointXY, QgsVectorFileWriter, \
                       Qgis, QgsCoordinateTransformContext
 from qgis.utils import unloadPlugin
-from graphviz import Graph
 import processing
 
 # Import generic functions
@@ -46,6 +45,7 @@ from .map_tools import SelectDCMapTool, ConnectNodesMapTool
 from .connect_points import createNodeCable
 from .update_attributes import updateNodeAttributes, updatePremisesAttributes
 from .mm_processing import MastermapProcessing
+from .sld_export import createSLD
 
 class NetworkDesignTools:
     """QGIS Plugin Implementation."""
@@ -837,32 +837,16 @@ class NetworkDesignTools:
             QMessageBox.critical(self.iface.mainWindow(),'Network Design Toolkit', 'Failed to create release sheet.\n{}: {}'.format(errorCode, errorMsg))
 
     def CreateSLD(self):
-        bdryLyr, bdryFeat = self.getSelectedBoundary()
-        if bdryLyr is None:
-            return
-        if bdryFeat is None:
+        bdry_lyr, bdry_feat = self.getSelectedBoundary()
+        if bdry_lyr is None or bdry_feat is None:
             return
 
-        if bdryFeat['Type'] != '1':
+        if bdry_feat['Type'] != '1':
             QMessageBox.critical(self.iface.mainWindow(), "Wrong polygon selected", \
-                "You must select a Primary node polygon from the " + bdryLyr.name() + " layer.")
+                "You must select a Primary node polygon from the " + bdry_lyr.name() + " layer.")
             return
 
-        start_dir = QgsProject.instance().absolutePath()
-        file_name = QFileDialog.getSaveFileName(caption='Save SLD As', filter='SVG (Scalable Vector Graphics) (*.svg)', directory=start_dir)[0]
-        if len(file_name) == 0:
-            return
-        dir_name = os.path.dirname(file_name)
-        if not os.path.exists(dir_name):
-            os.makedirs(dir_name)
-
-        g = Graph('SLD', filename=os.path.splitext(os.path.basename(file_name))[0], directory=dir_name, format='svg')
-
-        # Add primary node
-
-        # Add secondary nodes
-
-        # Add tertiary nodes
+        createSLD(self.iface, bdry_lyr)
 
 # Map Tool Event Handlers
 
