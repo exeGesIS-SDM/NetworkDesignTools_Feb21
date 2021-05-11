@@ -1,5 +1,4 @@
-from qgis.core import QgsProject, QgsProcessingFeatureSourceDefinition, QgsFeatureRequest, \
-                      QgsVectorLayerUtils, QgsGeometry
+from qgis.core import QgsProject, QgsFeatureRequest, QgsVectorLayerUtils, QgsGeometry
 from qgis.PyQt.QtWidgets import QMessageBox
 import processing
 from network_design_tools import common
@@ -45,9 +44,14 @@ def createNodeCable(iface, routingType, startPoint, startLayerName, startFid, en
         if layer == endLayerName:
             endFields = layers[layer]['fields']
 
-    startID = startPt[startFields['id']]
-    endID = endPt[endFields['id']]
-    cableName = '{}/{}'.format(startID, endID)
+    startId = startPt[startFields['id']]
+    endIdSplit = endPt[endFields['id']].split('-')
+    endId = []
+    for word in endIdSplit:
+        if word not in startId:
+            endId.append(word)
+
+    cableName = '{}/{}'.format(startId, '-'.join(endId))
 
     cableFields = layers['Cable']['fields']
 
@@ -55,7 +59,7 @@ def createNodeCable(iface, routingType, startPoint, startLayerName, startFid, en
     try:
         if routingType == 'UG':
             QgsProject.instance().addMapLayer(mergedDuctLyr)
-            
+
             start = '{}, {} [{}]'.format(startPoint.x(), startPoint.y(), QgsProject.instance().crs().authid())
             end = '{}, {} [{}]'.format(endPoint.x(), endPoint.y(), QgsProject.instance().crs().authid())
             print('start: ', start, ' end: ', end)
@@ -87,7 +91,7 @@ def createNodeCable(iface, routingType, startPoint, startLayerName, startFid, en
     except Exception as e:
         print(e)
         QMessageBox.warning(iface.mainWindow(), 'Cable not created', \
-            'Cable from {}: {} to {}: {} could not be calculated'.format(startLayerName, startID, endLayerName, endID))
+            'Cable from {}: {} to {}: {} could not be calculated'.format(startLayerName, startId, endLayerName, '-'.join(endIdSplit)))
     finally:
         cableLyr.rollBack()
         QgsProject.instance().removeMapLayer(mergedDuctLyr)
