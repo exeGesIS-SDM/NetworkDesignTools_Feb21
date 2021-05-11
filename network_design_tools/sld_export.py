@@ -1,9 +1,12 @@
 import os
-from graphviz import Graph
 from qgis.PyQt.QtWidgets import QMessageBox, QFileDialog
 from qgis.core import QgsProject, QgsProcessingFeatureSourceDefinition, QgsFeatureRequest, NULL
 import processing
 from network_design_tools import common
+try:
+    from graphviz import Graph
+except ModuleNotFoundError:
+    QMessageBox.critical("Graphviz missing", "graphviz python package must be installed using pip.")
 
 def createSLD(iface, bdry_lyr):
     layers = common.prerequisites['layers']
@@ -26,7 +29,10 @@ def createSLD(iface, bdry_lyr):
     bdry_sel_lyr = QgsProcessingFeatureSourceDefinition(bdry_lyr.source(), selectedFeaturesOnly = True)
     processing.run("qgis:selectbylocation", { 'INPUT' : nodes_lyr, 'INTERSECT' : bdry_sel_lyr, 'METHOD' : 0, 'PREDICATE' : [6] })
 
-    g = Graph('SLD', filename=os.path.splitext(os.path.basename(file_name))[0], directory=dir_name, format='svg')
+    try:
+        g = Graph('SLD', filename=os.path.splitext(os.path.basename(file_name))[0], directory=dir_name, format='svg')
+    except:
+        return
 
     node_flds = layers['Node']['fields']
     request = QgsFeatureRequest()
