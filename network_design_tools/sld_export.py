@@ -2,11 +2,11 @@ import os
 from qgis.PyQt.QtWidgets import QMessageBox, QFileDialog
 from qgis.core import QgsProject, QgsProcessingFeatureSourceDefinition, QgsFeatureRequest, NULL
 import processing
-from network_design_tools import common
 try:
     from graphviz import Graph
 except ModuleNotFoundError:
-    QMessageBox.critical("Graphviz missing", "graphviz python package must be installed using pip.")
+    pass
+from network_design_tools import common
 
 def createSLD(iface, bdry_lyr):
     layers = common.prerequisites['layers']
