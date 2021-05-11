@@ -22,7 +22,6 @@
  ***************************************************************************/
 """
 import os
-
 from functools import partial
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, QVariant
 from qgis.PyQt.QtGui import QIcon
@@ -100,7 +99,7 @@ class NetworkDesignTools:
         if os.path.exists(graphvizPath):
             os.environ['PATH'] += os.pathsep + graphvizPath
         else:
-            #QMessageBox.critical(iface.mainWindow(), 'Directory not found', 'The {0} directory could not be found. The SLD tool will be disabled.'.format(graphvizPath))
+            QMessageBox.critical(iface.mainWindow(), 'Directory not found', 'The {0} directory could not be found. The SLD tool will be disabled.'.format(graphvizPath))
             self.enableSLD = False
 
         # Check if plugin was started the first time in current QGIS session
@@ -311,7 +310,6 @@ class NetworkDesignTools:
             callback=self.CreateSLD,
             parent=self.iface.mainWindow())
         sld.setEnabled(self.enableSLD)
-        sld.setVisible(False)
 
         #self.linkDCPolyTool.setAction(dropCableBtn)
 

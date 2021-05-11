@@ -344,7 +344,6 @@
             "source": "./Shapefiles/Nodes.shp",
             "fields": {
                  "id": "Node ID",
-                 "splitters": "Splitters",
                  "premises": "Premises",
                  "address": "Address",
                  "comments": "Comments",
@@ -352,7 +351,9 @@
                  "x": "X",
                  "y": "Y",
                  "use": "Use",
-                 "position": "Position"
+                 "position": "Position",
+                 "splitters_1_4": "1_4_split",
+                 "splitters_1_8": "1_8_split"
             }
          },
          "TopoArea": {
