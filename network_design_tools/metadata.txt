@@ -26,6 +26,7 @@ hasProcessingProvider=no
     - Additional parameters for Bill of Quantities
     - Release sheet tool
     - Node attribute update tool
+    - Straight Line Diagram tool
     <p>0.2 - First client release
     <p>0.1 - Initial alpha release
 

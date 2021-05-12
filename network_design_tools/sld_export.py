@@ -46,7 +46,7 @@ def createSLD(iface, bdry_lyr):
     request = QgsFeatureRequest()
 
     # Set to draw from left to right
-    g.attr(rankdir='LR')
+    g.attr(rankdir='LR', splines='line')
     g.attr('edge', fontsize='12', fontname='arial')
     g.attr('node', fontsize='12', fontname='arial')
 
