@@ -22,18 +22,17 @@
 
 from PyQt5.QtCore import pyqtSignal, Qt
 from PyQt5.QtWidgets import QMessageBox
-
-from qgis.core import QgsProject, QgsFeatureRequest, QgsRectangle
-from qgis.gui import QgsMapToolEmitPoint
+from qgis.core import QgsProject, QgsFeatureRequest, QgsRectangle, QgsPointLocator, \
+                      QgsSnappingConfig, QgsTolerance
+from qgis.gui import QgsMapToolEmitPoint, QgsSnapIndicator
 from network_design_tools import common
-
 
 class SelectDCMapTool(QgsMapToolEmitPoint):
 
     dcSelected = pyqtSignal('QgsFeatureId', 'QgsFeatureId')
 
     def __init__(self, iface, canvas):
-        """The user should select a pole object. Then select a Boundary"""
+        """The user should select a SN/TN node object"""
 
         QgsMapToolEmitPoint.__init__(self, canvas)
 
@@ -43,22 +42,22 @@ class SelectDCMapTool(QgsMapToolEmitPoint):
         # self.snapper = QgsMapCanvasSnappingUtils(self.canvas)
         self.nodeLayerName = common.prerequisites['layers']['Node']['name']
         self.nodeLayer = None
-        self.nodeFields = common.prerequisites['layers']['Node']['fields'] 
+        self.nodeFields = common.prerequisites['layers']['Node']['fields']
         self.nodeUseLUT = common.prerequisites['settings']['nodeUseBdryTypeLUT']
         self.bndLayerName = common.prerequisites['layers']['Boundaries']['name']
         self.bndLayer = None
         self.bndFields = common.prerequisites['layers']['Boundaries']['fields']
-        self.poleSelected = False
-        self.poleId = -1
-        self.poleFeat = None
+        self.nodeSelected = False
+        self.nodeId = -1
+        self.nodeFeat = None
         self.crs = ''
         self.reset()
 
     def reset(self):
-        self.poleSelected = False
-        self.poleId = -1
-        self.poleFeat = None
-        
+        self.nodeSelected = False
+        self.nodeId = -1
+        self.nodeFeat = None
+
     def canvasReleaseEvent(self, event):
         # Get the click and emit the point in source crs
         if self.nodeLayer is None:
@@ -67,20 +66,20 @@ class SelectDCMapTool(QgsMapToolEmitPoint):
                 self.deactivate()
 
         point = event.mapPoint()
-        self.nodeLayer.selectByExpression('\"Position\"=\'1\'')
+        self.nodeLayer.selectByExpression('\"Position\" in (\'1\',\'2\')')
         request = QgsFeatureRequest(QgsRectangle(point.x()-1,point.y()-1, point.x()+1, point.y()+1))
         # Get ID of first feature with DP type
-        for pole in self.nodeLayer.getSelectedFeatures(request):
-            #print(pole['Use'])
-            #any pole will do
-            #if pole['Use'] == 'Carrier' or pole['Use'] == 'PMCE' or pole['Use'] == 'PMSN':
-            self.poleSelected = True
-            self.poleId = pole.id()
-            self.poleFeat = pole
+        for node in self.nodeLayer.getSelectedFeatures(request):
+            #print(node['Use'])
+            #any node will do
+            #if node['Use'] == 'Carrier' or node['Use'] == 'PMCE' or node['Use'] == 'PMSN':
+            self.nodeSelected = True
+            self.nodeId = node.id()
+            self.nodeFeat = node
             break
 
-        if self.poleSelected:
-            self.poleSelected = False
+        if self.nodeSelected:
+            self.nodeSelected = False
 
             # Get the click and check they clicked on a SN
             if self.bndLayer is None:
@@ -91,14 +90,15 @@ class SelectDCMapTool(QgsMapToolEmitPoint):
                     self.deactivate()
 
             for bnd in self.bndLayer.getFeatures(request):
-                if bnd[self.bndFields['type']] == self.nodeUseLUT[self.poleFeat[self.nodeFields['use']]]: # UGSN or PMSN
-                    self.dcSelected.emit(self.poleId, bnd.id())
+                bndType = bnd[self.bndFields['type']]
+                if  bndType != 1 and bndType == self.nodeUseLUT[self.nodeFeat[self.nodeFields['use']]]: # UGSN or PMSN
+                    self.dcSelected.emit(self.nodeId, bnd.id())
                     break
 
             self.reset()
         else:
             QMessageBox.information(self.iface.mainWindow(), 'Network Design Toolkit', \
-                'First select an aerial node from the {} layer'.format(self.nodeLayerName) , QMessageBox.Ok)
+                'First select an aerial or underground node from the {} layer'.format(self.nodeLayerName) , QMessageBox.Ok)
 
     def isZoomTool(self):
         return False
@@ -139,7 +139,7 @@ class ConnectNodesMapTool(QgsMapToolEmitPoint):
 
     def canvasReleaseEvent(self, event):
         if event.button() == Qt.LeftButton:
-            """ Generate Cable """
+            ### Generate Cable ###
             # Get the click and emit the point in source crs
             if not self.startPtSelected:
                 if len(self.layers) == 0:
@@ -194,6 +194,53 @@ class ConnectNodesMapTool(QgsMapToolEmitPoint):
         if len(self.layers) == 0:
             self.iface.messageBar().pushInfo('Layers not open', 'None of the Cabinet, Node or Joint layers are open.')
             self.deactivate()
+
+    def isZoomTool(self):
+        return False
+
+    def isTransient(self):
+        return False
+
+    def isEditTool(self):
+        return False
+
+class UGDropMapTool(QgsMapToolEmitPoint):
+    """ Map tool for getting a snapped point click """
+    canvasClickSnapped = pyqtSignal('QgsPointXY', str, 'QgsPointLocator::Match')
+
+    def __init__(self, iface, canvas):
+        QgsMapToolEmitPoint.__init__(self, canvas)
+        self.iface = iface
+        self.canvas = canvas
+        self.snapper = self.canvas.snappingUtils()
+        self.snap_indicator = QgsSnapIndicator(self.canvas)
+        self.snap_layers = common.prerequisites['settings']['ugDropSnapLayers']
+        self.snap_configured = False
+
+    def deactivate(self):
+        self.reset()
+        QgsMapToolEmitPoint.deactivate(self)
+
+    def reset(self):
+        self.snap_configured = False
+        self.snap_indicator.setMatch(QgsPointLocator.Match())
+
+    def canvasMoveEvent(self, event):
+        # Enable snapping to snap_layers only
+        if not self.snap_configured and len(self.snap_layers) > 0:
+            self.snap_configured = common.set_snap_layers(self.snap_layers, [QgsSnappingConfig.SnappingType.VertexAndSegment], 12, QgsTolerance.UnitType.Pixels)
+            if not self.snap_configured:
+                self.iface.messageBar().pushCritical('Snap layer(s) unavailable', 'Could not configure the specified snapping layers: {}'.format(', '.join(self.snap_layers)))
+                self.deactivate()
+        snapped_point = self.snapper.snapToMap(event.mapPoint())
+        self.snap_indicator.setMatch(snapped_point)
+
+    def canvasReleaseEvent(self, event):
+        # Get the click and emit the point in source crs
+        snapped_point = self.snapper.snapToMap(event.mapPoint())
+        crs = self.canvas.mapSettings().destinationCrs().authid()
+        if snapped_point.isValid():
+            self.canvasClickSnapped.emit(snapped_point.point(), crs, snapped_point)
 
     def isZoomTool(self):
         return False

@@ -2,6 +2,7 @@ import os.path
 import json
 import csv
 from qgis.PyQt.QtWidgets import QMessageBox
+from qgis.core import QgsProject, QgsSnappingConfig
 
 prerequisites = {}
 
@@ -30,6 +31,40 @@ def getLayerByName(iface, project, layerName, showMessage = True):
         if showMessage:
             QMessageBox.critical(iface.mainWindow(), 'Layer not found', 'The {0} layer could not be found. Please ensure the layer is open.'.format(layerName))
         return None
+
+def set_snap_layers(layer_names, snap_types, snap_tolerance, snap_units):
+    snap_config = QgsSnappingConfig(QgsProject.instance())
+    snap_config.setEnabled(True)
+    snap_config.setMode(QgsSnappingConfig.SnappingMode.AdvancedConfiguration)
+
+    disabled_layer_settings = QgsSnappingConfig.IndividualLayerSettings(False, QgsSnappingConfig.SnappingType.Vertex, snap_tolerance, snap_units)
+    if len(snap_types) == 0:
+        return False
+
+    if len(snap_types) == 1 or len(snap_types) < len(layer_names):
+        per_layer_snap = False
+        snap_layer_settings = QgsSnappingConfig.IndividualLayerSettings(True, snap_types[0], snap_tolerance, snap_units)
+    else:
+        per_layer_snap = True
+
+    snap_layer_found = False
+    all_layer_settings = snap_config.individualLayerSettings()
+    for layer in all_layer_settings.keys():
+        if layer.name() in layer_names:
+            # Enable specified snap settings
+            if per_layer_snap:
+                index = layer_names.index(layer.name())
+                snap_layer_settings = QgsSnappingConfig.IndividualLayerSettings(True, snap_types[index], snap_tolerance, snap_units)
+            snap_config.setIndividualLayerSettings(layer, snap_layer_settings)
+            snap_layer_found = True
+        else:
+            if all_layer_settings[layer].enabled():
+                snap_config.setIndividualLayerSettings(layer, disabled_layer_settings)
+
+    if snap_layer_found:
+        QgsProject.instance().setSnappingConfig(snap_config)
+
+    return snap_layer_found
 
 def writeToCSV(iface, csvfilename, writeThis, isFirstRow = False):
     #try:

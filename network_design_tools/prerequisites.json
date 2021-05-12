@@ -281,7 +281,8 @@
             "name": "BT Duct",
             "source": "./Shapefiles/BT Duct.shp",
             "fields": {
-                "plantItem": "PLANT_ITEM"
+                "plantItem": "PLANT_ITEM",
+                "leadSpine": "Lead_Spine"
             }
         },
         "Duct": {
@@ -356,6 +357,16 @@
                  "splitters_1_8": "1_8_split"
             }
          },
+         "SubFeed": {
+            "name": "Subscriber Feed",
+            "source": "./Shapefiles/Nodes.shp",
+            "fields": {
+                "id": "id",
+                "rotation": "Rotation",
+                "dropCount": "Drop count",
+                "orientation": "Orientatio"
+            }
+         },
          "TopoArea": {
              "name": "Topographic Area",
              "source": "./Shapefiles/Topographic Area.shp|layername=Topographic Area",
@@ -400,6 +411,7 @@
         "graphvizBinPath": "C:/Program Files/Graphviz/bin",
         "nodeUseBdryTypeLUT": {"1":"1", "2":"2", "3":"3", "4":"5", "5":"4"},
         "premisesAddressFields": ["ORG_NAME", "SUB_BLDG", "BLDG_NAME", "BLDG_NUM", "STREET", "LOCALITY", "POST_TOWN", "POSTCODE"],
-        "releaseSheetFieldIndexList": "0,1,3,5,6,7,8,9,10,11,15,16,17,18,19,20,23"
+        "releaseSheetFieldIndexList": "0,1,3,5,6,7,8,9,10,11,15,16,17,18,19,20,23",
+        "ugDropSnapLayers": ["BT Duct", "Duct"]
     }
 }

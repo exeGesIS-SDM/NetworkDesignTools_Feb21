@@ -26,8 +26,8 @@ from functools import partial
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, QVariant
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction, QMessageBox, QToolButton, QMenu, QFileDialog
-from qgis.core import QgsProject, QgsVectorLayer, QgsPoint, QgsField, QgsProcessingFeatureSourceDefinition, \
-                      QgsFeatureRequest, QgsVectorLayerUtils, QgsGeometry, QgsPointXY, QgsVectorFileWriter, \
+from qgis.core import QgsProject, QgsVectorLayer, QgsField, QgsProcessingFeatureSourceDefinition, \
+                      QgsVectorLayerUtils, QgsGeometry, QgsPointXY, QgsVectorFileWriter, \
                       Qgis, QgsCoordinateTransformContext
 from qgis.utils import unloadPlugin
 import processing
@@ -41,9 +41,8 @@ from .map_tools import SelectDCMapTool, ConnectNodesMapTool
 # Import the code for the dialog
 #from .property_count_dialog import PropertyCountDialog
 # Import the code to connect nodes
-from .connect_points import createNodeCable
+from .connect_points import DropCableBuilder, createNodeCable
 from .update_attributes import updateNodeAttributes, updatePremisesAttributes
-from .mm_processing import MastermapProcessing
 from .sld_export import createSLD
 
 class NetworkDesignTools:
@@ -77,14 +76,10 @@ class NetworkDesignTools:
         if len(common.prerequisites) == 0 :
             return
 
-        # initialize freeHandTools
+        # initialize  Map Tools
         self.activeTool = None
-        #self.pointTool = PointMapTool(self.iface.mapCanvas())
         self.linkDCTool = SelectDCMapTool(self.iface, self.iface.mapCanvas())
         self.connectNodesTool = ConnectNodesMapTool(self.iface, self.iface.mapCanvas())
-        #self.movePointTool = MovePointMapTool(self.iface, self.iface.mapCanvas(), 'Toby Box', None)
-        #self.CountPropertiesTool = SelectCPTool(self.iface, self.iface.mapCanvas())
-        #self.freehandPolyTool = FreehandPolygonMapTool(self.iface.mapCanvas())
 
         # Declare instance attributes
         self.actions = []
@@ -356,7 +351,7 @@ class NetworkDesignTools:
             self.first_start = False
 
 
-    def selectDCObject(self, poleId, SNID):
+    def selectDCObject(self, nodeId, bdryId):
         '''
         Prompt user to click on pole
         Select all address points in the SN
@@ -369,78 +364,12 @@ class NetworkDesignTools:
         Populate the cable fields
         '''
 
-        layers = common.prerequisites['layers']
-        bdryLayerName = layers['Boundaries']['name']
-        poleLayerName = layers['Node']['name']
-        AddressLayerName = layers['Premises']['name']
-        CableLayerName = layers['Cable']['name']
+        cable_builder = DropCableBuilder(self.iface, nodeId, bdryId)
+        if cable_builder.is_valid:
+            cable_builder.create_drop_cables()
+        del cable_builder
 
-        bdryLyr = common.getLayerByName(self.iface, QgsProject.instance(), bdryLayerName)
-        if bdryLyr is None:
-            return
-
-        poleLyr = common.getLayerByName(self.iface, QgsProject.instance(), poleLayerName)
-        if poleLyr is None:
-            return
-
-        for feat in poleLyr.getFeatures(QgsFeatureRequest(poleId)):
-            Pole = feat
-
-        for feat in bdryLyr.getFeatures(QgsFeatureRequest(SNID)):
-            bdryFeat = feat
-            bdryType = feat[layers['Boundaries']['fields']['type']]
-
-        cableLyr = common.getLayerByName(self.iface, QgsProject.instance(), CableLayerName)
-        if cableLyr is None:
-            return
-
-        tempLyr = QgsVectorLayer("Polygon?crs=EPSG:27700", "Temp_Boundary", "memory")
-        tempLyr.dataProvider().addFeature(bdryFeat)
-
-        cpLyr = common.getLayerByName(self.iface, QgsProject.instance(), AddressLayerName, True)
-        if cpLyr is None:
-            return
-
-        # Get the intersecting properties
-        processing.run("qgis:selectbylocation", {'INPUT':cpLyr, 'INTERSECT':tempLyr, 'METHOD':0, 'PREDICATE':[6]}) # 6 = Within
-        if bdryType in ('2', '3'): # UGSN / PMSN
-            processing.run("qgis:selectbylocation", {'INPUT':bdryLyr, 'INTERSECT':tempLyr, 'METHOD':0, 'PREDICATE':[5, 6]}) # 5 = Overlaps
-            bdryLyr.selectByExpression('\"{}\" in (\'4\', \'5\')'.format(layers['Boundaries']['fields']['type']), \
-                QgsVectorLayer.SelectBehavior.IntersectSelection)
-
-            if bdryLyr.selectedFeatureCount() > 0:
-                bdrySelLyr = QgsProcessingFeatureSourceDefinition(bdryLyr.source(), selectedFeaturesOnly = True)
-                processing.run("qgis:selectbylocation", { 'INPUT' : cpLyr, 'INTERSECT' : bdrySelLyr, 'METHOD' : 3, 'PREDICATE' : [6] }) # 3 = Remove from selection
-                bdryLyr.removeSelection()
-
-        message = '%s properties have been found within the SN area. Do you want to draw cables?' % (cpLyr.selectedFeatureCount())
-        reply = QMessageBox.question(self.iface.mainWindow(), 'Create Cables', message, QMessageBox.Yes, QMessageBox.No)
-        if reply == QMessageBox.No:
-            return
-
-        # Initialise MastermapProcessing
-        mp = MastermapProcessing(self.iface, 'TopoArea', bdryLyr, SNID)
-
-        cableFields = layers['Cable']['fields']
-        uprnField = layers['Premises']['fields']['uprn']
-        for cpfeat in cpLyr.selectedFeatures(): # Loop through the properties
-            cable_pts = []
-            cable_pts.append(QgsPoint(cpfeat.geometry().asPoint()))
-            cable_pts.append(QgsPoint(Pole.geometry().asPoint()))
-
-            new_cable = mp.clipCableByBuilding(cpfeat.geometry(), Pole.geometry(), QgsGeometry.fromPolyline(cable_pts))
-
-            pc = QgsVectorLayerUtils.createFeature(cableLyr)
-            pc.setGeometry(new_cable)
-            pc.setAttribute(cableFields['feed'], '2') # Aerial
-            pc.setAttribute(cableFields['use'], '1') # Access
-            pc.setAttribute(cableFields['type'], '1') # 1F
-            pc.setAttribute(cableFields['uprn'], cpfeat[uprnField])
-            cableLyr.dataProvider().addFeature(pc)
-        mp.removeSelection()
-        del mp
-        cableLyr.triggerRepaint()
-
+        self.linkDC()
 
     def UpdatePremisesAttributes(self):
         """
@@ -850,7 +779,6 @@ class NetworkDesignTools:
 # Map Tool Event Handlers
 
     def linkDC(self):
-
         if not self.linkDCTool.isActive():
             self.iface.mapCanvas().setMapTool(self.linkDCTool)
 
