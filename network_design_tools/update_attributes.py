@@ -101,6 +101,11 @@ def updatePremisesAttributes(iface, bdryLyr, bdryFeat):
     if cpLyr is None:
         return
 
+    cableLayerName = layers['Cable']['name']
+    cableLyr = common.getLayerByName(iface, QgsProject.instance(), cableLayerName, True)
+    if cableLyr is None:
+        return
+
     #get the intersecting properties
     processing.run("qgis:selectbylocation", {'INPUT':cpLyr, 'INTERSECT':tempLyr, 'METHOD':0, 'PREDICATE':[0]})
     processing.run("qgis:selectbylocation", {'INPUT':bdryLyr, 'INTERSECT':tempLyr, 'METHOD':0, 'PREDICATE':[0]})
@@ -119,10 +124,12 @@ def updatePremisesAttributes(iface, bdryLyr, bdryFeat):
                 bdryType = bdryfeat['Type']
                 if bdryType == '1': # UGPN
                     cpfeat.setAttribute('PN', bdryfeat['Name'])
-                elif bdryType in ('2', '3'): # UGSN or PMSN
+                elif bdryType in ('2', '3'): # UGSN, PMSN
                     cpfeat.setAttribute('SN', bdryfeat['Name'])
-                elif bdryType in ('4', '5'): # UGCE or PMCE
+                elif bdryType in ('4', '5'): # UGCE, PMCE
                     cpfeat.setAttribute('TN', bdryfeat['Name'])
+                elif bdryType == '8': # AC
+                    cpfeat.setAttribute('AC', bdryfeat['Name'])
 
                 LOC = bdryfeat['LOC']
                 if LOC != 'N/A': # = 'N/A' Set the LOC to true if inside an LOC polygon, Set LOCType to the LOC type value
@@ -134,6 +141,13 @@ def updatePremisesAttributes(iface, bdryLyr, bdryFeat):
                         if LOC is not None:
                             # Append to existing value
                             cpfeat.setAttribute('LOC_TYPE', '{}; {}'.format(cpfeat['LOC_TYPE'], LOC))
+
+                # update CP with length of cable
+                cableLyr.selectByExpression('"UPRN" = \'{}\''.format(cpfeat['UPRN']))
+                if cableLyr.selectedFeatureCount() > 0:
+                    clength = cableLyr.selectedFeatures()[0].geometry().length()
+                    cpfeat.setAttribute('Distance', clength)
+
                 cpLyr.updateFeature(cpfeat)
 
     cpLyr.commitChanges()

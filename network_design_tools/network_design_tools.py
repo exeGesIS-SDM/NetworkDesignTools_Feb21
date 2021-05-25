@@ -77,14 +77,11 @@ class NetworkDesignTools:
         if len(common.prerequisites) == 0 :
             return
 
-        # initialize freeHandTools
+        # initialize  Map Tools
         self.activeTool = None
-        #self.pointTool = PointMapTool(self.iface.mapCanvas())
         self.linkDCTool = SelectDCMapTool(self.iface, self.iface.mapCanvas())
         self.connectNodesTool = ConnectNodesMapTool(self.iface, self.iface.mapCanvas())
-        #self.movePointTool = MovePointMapTool(self.iface, self.iface.mapCanvas(), 'Toby Box', None)
-        #self.CountPropertiesTool = SelectCPTool(self.iface, self.iface.mapCanvas())
-        #self.freehandPolyTool = FreehandPolygonMapTool(self.iface.mapCanvas())
+
 
         # Declare instance attributes
         self.actions = []
@@ -471,7 +468,7 @@ class NetworkDesignTools:
         if reply == QMessageBox.No:
             return
 
-        updatePremisesAttributes(self.iface, bdryLyr)
+        updatePremisesAttributes(self.iface, bdryLyr, bdryFeat)
 
     def UpdateNodeAttributes(self):
         """ Update premises/address attributes for nodes """
