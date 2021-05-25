@@ -375,7 +375,6 @@ class NetworkDesignTools:
             self.cableBuilder.create_drop_cables(nodeId, bdryId)
 
     def finishedDCObject(self):
-        print('main completed event')
         self.linkDCBtn.setChecked(True)
         self.linkDC()
 
@@ -408,7 +407,7 @@ class NetworkDesignTools:
         if reply == QMessageBox.No:
             return
 
-        updatePremisesAttributes(self.iface, bdryLyr)
+        updatePremisesAttributes(self.iface, bdryLyr, bdryFeat)
 
     def UpdateNodeAttributes(self):
         """ Update premises/address attributes for nodes """

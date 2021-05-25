@@ -1,6 +1,7 @@
 from PyQt5.QtCore import pyqtSignal, QObject
 from qgis.core import QgsProject, QgsVectorLayer, QgsPoint, QgsProcessingFeatureSourceDefinition, \
-                      QgsFeatureRequest, QgsVectorLayerUtils, QgsGeometry, QgsSpatialIndex
+                      QgsFeatureRequest, QgsVectorLayerUtils, QgsGeometry, QgsSpatialIndex, NULL, \
+                      QgsRectangle
 from qgis.PyQt.QtWidgets import QMessageBox
 import processing
 from network_design_tools import common
@@ -121,6 +122,9 @@ class DropCableBuilder(QObject):
         self.premises_index = None
         self.premises_id = None
 
+        self.subscriber_lyr = None
+        self.sub_fields = self.layers['SubFeed']['fields']
+
         self.mp = None
         self.point_tool = UGDropMapTool(self.iface, self.iface.mapCanvas())
         self.snap_config = QgsProject.instance().snappingConfig()
@@ -141,6 +145,10 @@ class DropCableBuilder(QObject):
             return
 
         self.cp_lyr = common.getLayerByName(self.iface, QgsProject.instance(), self.layers['Premises']['name'])
+        if self.cp_lyr is None:
+            return
+
+        self.subscriber_lyr = common.getLayerByName(self.iface, QgsProject.instance(), self.layers['SubFeed']['name'])
         if self.cp_lyr is None:
             return
 
@@ -332,6 +340,7 @@ class DropCableBuilder(QObject):
 
                     split_lyr.deleteFeature(duct.id())
                     split_lyr.commitChanges()
+
             except Exception as e:
                 print(type(e), e)
             finally:
@@ -342,8 +351,12 @@ class DropCableBuilder(QObject):
 
         # Insert subscriber feed / client lead in
         premises_geom = self.premises_list[self.premises_id].geometry()
+
+        self.insert_subscriber_feed(end_point, premises_geom.asPoint())
+
         duct_pts = []
         duct_pts.append(QgsPoint(premises_geom.asPoint()))
+
         duct_pts.append(QgsPoint(end_point))
         lead_in_geom = self.mp.clipGeometryByBuilding(premises_geom, self.node.geometry(), QgsGeometry.fromPolyline(duct_pts))
 
@@ -364,6 +377,46 @@ class DropCableBuilder(QObject):
 
         vertices = list(lead_in_geom.vertices())
         return vertices[0]
+
+    def insert_subscriber_feed(self, point, premise):
+        try:
+            self.subscriber_lyr.startEditing()
+
+            # Check if subscriber feed at point location
+            existing_feed = False
+            aoi = QgsRectangle(point.x()-0.1, point.y()-0.1, point.x()+0.1, point.y()+0.1)
+            for feed in self.subscriber_lyr.getFeatures(QgsFeatureRequest(aoi)):
+                feed.setAttribute(self.sub_fields['dropCount'], feed[self.sub_fields['dropCount']] + 1)
+                self.subscriber_lyr.updateFeature(feed)
+                existing_feed = True
+                break
+
+            if not existing_feed:
+                max_id = self.subscriber_lyr.maximumValue(self.subscriber_lyr.fields().indexFromName(self.sub_fields['id']))
+                if max_id == NULL:
+                    max_id = 0
+
+                sub_feed = QgsVectorLayerUtils.createFeature(self.subscriber_lyr)
+                sub_feed.setGeometry(QgsGeometry.fromPointXY(point))
+                sub_feed.setAttribute(self.sub_fields['id'], max_id + 1)
+                sub_feed.setAttribute(self.sub_fields['dropCount'], 1)
+
+                line =  QgsGeometry.fromPolyline([QgsPoint(self.node.geometry().asPoint()), QgsPoint(point)])
+                s = line.closestSegmentWithContext(premise)
+                if s[3] < 0:
+                    sub_feed.setAttribute(self.sub_fields['orientation'], 1) # Left
+                else:
+                    sub_feed.setAttribute(self.sub_fields['orientation'], 2) # Right
+
+                rotation = point.azimuth(premise)
+                sub_feed.setAttribute(self.sub_fields['rotation'], rotation)
+
+                self.subscriber_lyr.addFeature(sub_feed)
+            self.subscriber_lyr.commitChanges()
+        except Exception as e:
+            print(type(e), e)
+        finally:
+            self.subscriber_lyr.rollBack()
 
     def next_ug_drop_cable(self):
         nearest_ids = self.premises_index.nearestNeighbor(self.node.geometry().asPoint(), 1)
