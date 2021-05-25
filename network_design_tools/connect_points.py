@@ -1,3 +1,4 @@
+from PyQt5.QtCore import pyqtSignal, QObject
 from qgis.core import QgsProject, QgsVectorLayer, QgsPoint, QgsProcessingFeatureSourceDefinition, \
                       QgsFeatureRequest, QgsVectorLayerUtils, QgsGeometry, QgsSpatialIndex
 from qgis.PyQt.QtWidgets import QMessageBox
@@ -100,55 +101,73 @@ def createNodeCable(iface, routingType, startPoint, startLayerName, startFid, en
         del merged_duct_lyr
         del cable_lyr
 
-class DropCableBuilder():
-    def __init__(self, iface, node_id, bdry_id):
+class DropCableBuilder(QObject):
+    cablesCompleted = pyqtSignal()
+    def __init__(self, iface):
+        QObject.__init__(self)
+
         self.iface = iface
         self.is_valid = False
         self.layers = common.prerequisites['layers']
 
-        node_lyr = common.getLayerByName(self.iface, QgsProject.instance(), self.layers['Node']['name'])
-        if node_lyr is None:
-            return
-        node_lyr.removeSelection()
-        self.node = node_lyr.getFeature(node_id)
-
-        self.bdry_lyr = common.getLayerByName(self.iface, QgsProject.instance(), self.layers['Boundaries']['name'])
-        if self.bdry_lyr is None:
-            return
-        self.bdry_lyr.selectByIds([bdry_id])
-        if self.bdry_lyr.selectedFeatureCount() == 0:
-            return
-        bdry_feat = self.bdry_lyr.selectedFeatures()[0]
-        self.bdry_type = bdry_feat[self.layers['Boundaries']['fields']['type']]
-
-        self.cable_lyr = common.getLayerByName(self.iface, QgsProject.instance(), self.layers['Cable']['name'])
-        if self.cable_lyr is None:
-            return
+        self.node_lyr = None
+        self.bdry_lyr = None
+        self.cable_lyr = None
         self.cable_fields = self.layers['Cable']['fields']
 
-        self.cp_lyr = common.getLayerByName(self.iface, QgsProject.instance(), self.layers['Premises']['name'])
-        if self.cp_lyr is None:
-            return
+        self.cp_lyr = None
         self.uprn_field = self.layers['Premises']['fields']['uprn']
         self.premises_list = {}
         self.premises_index = None
         self.premises_id = None
 
-        self.mp = MastermapProcessing(self.iface, 'TopoArea', self.bdry_lyr, bdry_id)
+        self.mp = None
         self.point_tool = UGDropMapTool(self.iface, self.iface.mapCanvas())
+        self.snap_config = QgsProject.instance().snappingConfig()
+
+    def check_layers(self):
+        self.is_valid = False
+
+        self.node_lyr = common.getLayerByName(self.iface, QgsProject.instance(), self.layers['Node']['name'])
+        if self.node_lyr is None:
+            return
+
+        self.bdry_lyr = common.getLayerByName(self.iface, QgsProject.instance(), self.layers['Boundaries']['name'])
+        if self.bdry_lyr is None:
+            return
+
+        self.cable_lyr = common.getLayerByName(self.iface, QgsProject.instance(), self.layers['Cable']['name'])
+        if self.cable_lyr is None:
+            return
+
+        self.cp_lyr = common.getLayerByName(self.iface, QgsProject.instance(), self.layers['Premises']['name'])
+        if self.cp_lyr is None:
+            return
+
         self.snap_config = QgsProject.instance().snappingConfig()
 
         self.is_valid = True
 
-    def create_drop_cables(self):
+    def create_drop_cables(self, node_id, bdry_id):
         if not self.is_valid:
             return
+
+        self.node_lyr.removeSelection()
+        self.node = self.node_lyr.getFeature(node_id)
+
+        self.bdry_lyr.selectByIds([bdry_id])
+        if self.bdry_lyr.selectedFeatureCount() == 0:
+            return
+        bdry_feat = self.bdry_lyr.selectedFeatures()[0]
+        bdry_type = bdry_feat[self.layers['Boundaries']['fields']['type']]
+
+        self.mp = MastermapProcessing(self.iface, 'TopoArea', self.bdry_lyr, bdry_id)
 
         # Get the intersecting properties
         bdry_sel_lyr = QgsProcessingFeatureSourceDefinition(self.bdry_lyr.source(), selectedFeaturesOnly = True)
         processing.run("qgis:selectbylocation", {'INPUT':self.cp_lyr, 'INTERSECT':bdry_sel_lyr, 'METHOD':0, 'PREDICATE':[6]}) # 6 = Within
 
-        if self.bdry_type in ('2', '3'): # UGSN / PMSN
+        if bdry_type in ('2', '3'): # UGSN / PMSN
             processing.run("qgis:selectbylocation", {'INPUT':self.bdry_lyr, 'INTERSECT':bdry_sel_lyr, 'METHOD':0, 'PREDICATE':[5, 6]}) # 5 = Overlaps
             self.bdry_lyr.selectByExpression('\"{}\" in (\'4\', \'5\')'.format(self.layers['Boundaries']['fields']['type']), \
                 QgsVectorLayer.SelectBehavior.IntersectSelection)
@@ -162,13 +181,10 @@ class DropCableBuilder():
         if reply == QMessageBox.No:
             return
 
-        if self.bdry_type in ('3', '5'): # PMSN/PMCE
+        if bdry_type in ('3', '5'): # PMSN/PMCE
             self.create_oh_drop_cables()
         else: # UGSN/UGCE
             self.create_ug_drop_cables()
-
-        self.mp.removeSelection()
-        self.cable_lyr.triggerRepaint()
 
     def create_oh_drop_cables(self):
         self.cable_lyr.startEditing()
@@ -189,6 +205,8 @@ class DropCableBuilder():
         self.cable_lyr.commitChanges()
         self.cable_lyr.rollBack()
 
+        self.drop_cables_completed()
+
     def create_ug_drop_cables(self):
         # Create list of premises to process
         self.premises_index = QgsSpatialIndex(self.cp_lyr.getSelectedFeatures())
@@ -197,20 +215,28 @@ class DropCableBuilder():
         self.cp_lyr.removeSelection()
 
         # Configure map tool
-        self.point_tool.canvasClickSnapped.connect(self.insert_ug_drop_cable)
         self.point_tool.deactivated.connect(self.reset_ug_drop_cable_builder)
         self.iface.mapCanvas().setMapTool(self.point_tool)
 
         self.next_ug_drop_cable()
 
+    def drop_cables_completed(self):
+        self.mp.removeSelection()
+        self.cp_lyr.removeSelection()
+        self.cable_lyr.triggerRepaint()
+        self.cablesCompleted.emit()
+
     def insert_ug_drop_cable(self, end_point, crs, match):
         duct_lyr = common.getLayerByName(self.iface, QgsProject.instance(), self.layers['Duct']['name'])
         if duct_lyr is None:
             self.point_tool.deactivate()
+            self.drop_cables_completed()
             return
 
         bt_duct_lyr = common.getLayerByName(self.iface, QgsProject.instance(), self.layers['BTDuct']['name'])
         if bt_duct_lyr is None:
+            self.point_tool.deactivate()
+            self.drop_cables_completed()
             return
 
         end_point = self.insert_lead_in_duct(end_point, duct_lyr, match)
@@ -261,11 +287,13 @@ class DropCableBuilder():
         self.next_ug_drop_cable()
 
     def insert_lead_in_duct(self, end_point, duct_lyr, match):
+        self.point_tool.canvasClickSnapped.disconnect(self.insert_ug_drop_cable)
         split_duct = True
         split_lyr = match.layer()
         duct = split_lyr.getFeature(match.featureId())
         geom = duct.geometry()
         geom.convertToSingleType()
+
         if match.hasVertex():
             # Check if vertex is at start/end of duct
             vertices = list(geom.vertices())
@@ -274,7 +302,7 @@ class DropCableBuilder():
 
         bt_lead_in = False
         if split_lyr.name() == self.layers['BTDuct']['name']:
-            if duct[self.layers['BTDuct']['fields']['leadSpine']] == 1:
+            if duct[self.layers['BTDuct']['fields']['leadSpine']] == 'Lead in':
                 bt_lead_in = True
 
         if split_duct:
@@ -345,8 +373,10 @@ class DropCableBuilder():
             geom = self.premises_list[self.premises_id].geometry()
             self.iface.mapCanvas().setCenter(geom.asPoint())
             self.iface.messageBar().pushInfo("Link to duct", "Click on duct vertex/segment to connect premises to {}".format(self.node[self.layers['Node']['fields']['id']]))
+            self.point_tool.canvasClickSnapped.connect(self.insert_ug_drop_cable)
         else:
             self.point_tool.deactivate()
+            self.drop_cables_completed()
 
     def reset_ug_drop_cable_builder(self):
         self.cable_lyr.rollBack()

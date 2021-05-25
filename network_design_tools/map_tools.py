@@ -237,10 +237,12 @@ class UGDropMapTool(QgsMapToolEmitPoint):
 
     def canvasReleaseEvent(self, event):
         # Get the click and emit the point in source crs
-        snapped_point = self.snapper.snapToMap(event.mapPoint())
-        crs = self.canvas.mapSettings().destinationCrs().authid()
-        if snapped_point.isValid():
-            self.canvasClickSnapped.emit(snapped_point.point(), crs, snapped_point)
+        if self.snap_configured:
+            snapped_point = self.snapper.snapToMap(event.mapPoint())
+            crs = self.canvas.mapSettings().destinationCrs().authid()
+            if snapped_point.isValid():
+                self.canvasClickSnapped.emit(snapped_point.point(), crs, snapped_point)
+                self.reset()
 
     def isZoomTool(self):
         return False

@@ -81,6 +81,9 @@ class NetworkDesignTools:
         self.linkDCTool = SelectDCMapTool(self.iface, self.iface.mapCanvas())
         self.connectNodesTool = ConnectNodesMapTool(self.iface, self.iface.mapCanvas())
 
+        # initialize Drop Cable Builder
+        self.cableBuilder = DropCableBuilder(iface)
+
         # Declare instance attributes
         self.actions = []
         self.menu = self.tr(u'&Network Design Tools')
@@ -316,9 +319,10 @@ class NetworkDesignTools:
         self.connectNodesTool.pointsClicked.connect(self.generateCable)
         self.connectNodesTool.deactivated.connect(self.resetConnectNodesTool)
 
+        self.cableBuilder.cablesCompleted.connect(self.finishedDCObject)
+
         # will be set False in run()
         self.first_start = True
-
 
     def closePlugin(self):
         unloadPlugin('network_design_tools')
@@ -364,11 +368,15 @@ class NetworkDesignTools:
         Populate the cable fields
         '''
 
-        cable_builder = DropCableBuilder(self.iface, nodeId, bdryId)
-        if cable_builder.is_valid:
-            cable_builder.create_drop_cables()
-        del cable_builder
+        if not self.cableBuilder.is_valid:
+            self.cableBuilder.check_layers()
 
+        if self.cableBuilder.is_valid:
+            self.cableBuilder.create_drop_cables(nodeId, bdryId)
+
+    def finishedDCObject(self):
+        print('main completed event')
+        self.linkDCBtn.setChecked(True)
         self.linkDC()
 
     def UpdatePremisesAttributes(self):
