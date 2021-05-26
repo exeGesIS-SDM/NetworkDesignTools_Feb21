@@ -66,23 +66,15 @@ def set_snap_layers(layer_names, snap_types, snap_tolerance, snap_units):
 
     return snap_layer_found
 
-def writeToCSV(iface, csvfilename, writeThis, isFirstRow = False):
-    #try:
-    #print(writeThis)
-    if isFirstRow:
-        attrib = 'w'
-    else:
-        attrib = 'a'
-    with open(csvfilename,attrib, newline='') as csvfile:
-        fieldnames = ['Item', 'Buildable', 'In LOC', 'Quantity']
-        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-        if isFirstRow:
+def writeToCSV(iface, csvfilename, headers, data):
+    try:
+        with open(csvfilename, 'w', newline='') as csvfile:
+            writer = csv.DictWriter(csvfile, fieldnames=headers)
             writer.writeheader()
-        #for items in writeThis
-        #    writer.writerow(items)
-        writer.writerow(writeThis)
-        #txwriter = csv.writer(csvfile, delimiter=',')
-        #txwriter.writerow(writeThis)
-    return True
-    #except:
-    #    return False
+            for row in data:
+                writer.writerow(row)
+        return True
+    except:
+        QMessageBox.critical(iface.mainWindow(), 'File in use', \
+                             'The {0} file could not be opened for write access. Please close the file and try again.'.format(csvfilename))
+        return False

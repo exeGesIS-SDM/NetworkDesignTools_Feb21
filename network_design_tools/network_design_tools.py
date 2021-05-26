@@ -22,13 +22,14 @@
  ***************************************************************************/
 """
 import os
+import subprocess
 from functools import partial
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, QVariant
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction, QMessageBox, QToolButton, QMenu, QFileDialog
 from qgis.core import QgsProject, QgsVectorLayer, QgsField, QgsProcessingFeatureSourceDefinition, \
                       QgsVectorLayerUtils, QgsGeometry, QgsPointXY, QgsVectorFileWriter, \
-                      Qgis, QgsCoordinateTransformContext
+                      Qgis, QgsCoordinateTransformContext, QgsFeatureRequest, NULL
 from qgis.utils import unloadPlugin
 import processing
 
@@ -414,7 +415,6 @@ class NetworkDesignTools:
         updateNodeAttributes(self.iface)
 
     def CreateBillofQuantities(self):
-        layers = common.prerequisites['layers']
         bdryLyr, bdryFeat = self.getSelectedBoundary()
         if bdryLyr is None:
             return
@@ -425,182 +425,173 @@ class NetworkDesignTools:
             QMessageBox.critical(self.iface.mainWindow(), "Wrong polygon selected", "You must select a Primary node polygon from the " + bdryLyr.name() + " layer.")
             return
 
-
-        #csvFileName  = layers['BillofQuantities']['source']
         startDir = QgsProject.instance().absolutePath()
         csvFileName = QFileDialog.getSaveFileName(caption='Save Bill of Quantities As', filter='CSV (Comma delimited) (*.csv)', directory=startDir)[0]
         if csvFileName == '':
             return
 
-        #get the boundary, for selecting everything else
+        # Get the boundary, for selecting everything else
         PNLyr = QgsVectorLayer("Polygon?crs=EPSG:27700", "Temp_Boundary", "memory")
         PNLyr.dataProvider().addFeature(bdryFeat)
 
-        #get the secondary boundaries, where LOC <> N/A, for calculating LOC values
+        # Get the LOC boundaries
         processing.run("qgis:selectbylocation", {'INPUT':bdryLyr, 'INTERSECT':PNLyr, 'METHOD':0, 'PREDICATE':[0]})
-        bdryLyr.selectByExpression('\"Type\" != \'N/A\'', QgsVectorLayer.SelectBehavior.IntersectSelection)
+        bdryLyr.selectByExpression('\"Type\" = \'6\'', QgsVectorLayer.SelectBehavior.IntersectSelection)
 
-        SNLyr = QgsVectorLayer("Polygon?crs=EPSG:27700", "Temp_Boundary", "memory")
-        SNLyr.dataProvider().addFeatures(bdryLyr.selectedFeatures())
-        print ('SNLyr ' + str(SNLyr.featureCount()))
+        locLyr = QgsVectorLayer("Polygon?crs=EPSG:27700", "Temp_Boundary", "memory")
+        locLyr.dataProvider().addFeatures(bdryLyr.selectedFeatures())
 
-        #run through the required checks from the json file
-        i=0
-        isFirst=True
-        try:
-            searchLayer = layers['BillofQuantities']['stats']['Stat'+str(i)]['Layer']
-        except:
-            searchLayer = ""
+        # Run through the required checks from the json file
+        boqConfig = common.prerequisites['settings']['BillofQuantities']
+        headers = boqConfig['headers']
+        stats = boqConfig['stats']
 
-        while searchLayer != '':
-            #print(layers['BillofQuantities']['stats']['Stat'+str(i)]['Title'])
+        results = []
+        for stat in stats.values():
+            if 'Layer' in stat:
+                searchLayerName = stat['Layer']
+            else:
+                continue
 
-            try:
-                searchName = layers['BillofQuantities']['stats']['Stat'+str(i)]['Title']
-            except:
-                searchName = "untitled"
+            searchLyr = common.getLayerByName(self.iface, QgsProject.instance(), searchLayerName, True)
+            if searchLyr is None:
+                continue
 
-            cpLyr = common.getLayerByName(self.iface, QgsProject.instance(), searchLayer, True)
-            if cpLyr is not None:
-                processing.run("qgis:selectbylocation", {'INPUT':cpLyr, 'INTERSECT':PNLyr, 'METHOD':0, 'PREDICATE':[0]})
+            if 'Title' in stat:
+                searchName = stat['Title']
+            else:
+                searchName = "Untitled"
 
-                try:
-                    fldName = layers['BillofQuantities']['stats']['Stat'+str(i)]['Field']
-                except:
-                    fldName = ""
+            if 'GroupTitle' in stat:
+                groupTitle = stat['GroupTitle']
+            else:
+                groupTitle = ""
 
-                if fldName == '': #a straight count, or some Calculations ...
-                    try:
-                        srchName = layers['BillofQuantities']['stats']['Stat'+str(i)]['Calculation0']['Title']
-                    except:
-                        srchName = ""
+            if searchName != '' or groupTitle != '':
+                results.append({headers[0]: searchName, headers[1]: groupTitle})
 
-                    if srchName == '': #a straight count
-                        ans = common.writeToCSV(self.iface, csvFileName,{'Item':searchName, 'Quantity': str(cpLyr.selectedFeatureCount())}, isFirst)
-                        isFirst = False
-                    else:
-                        j=0
-                        ans = common.writeToCSV(self.iface, csvFileName,{'Item':searchName, 'Quantity': ''}, isFirst)
-                        isFirst = False
+            if 'SummaryType' in stat:
+                summaryType = stat['SummaryType']
+            else:
+                summaryType = 'Count'
 
-                        while srchName != '':
-                            srchCriteria = layers['BillofQuantities']['stats']['Stat'+str(i)]['Calculation'+str(j)]['Criteria']
-                            #print (srchName + ' ' + srchCriteria)
+            processing.run("qgis:selectbylocation", {'INPUT':searchLyr, 'INTERSECT':PNLyr, 'METHOD':0, 'PREDICATE':[0]})
+            for calc in stat['Calculations'].values():
+                if 'Title' in calc:
+                    calcTitle = calc['Title']
+                else:
+                    calcTitle = "Untitled"
 
-                            processing.run("qgis:selectbyexpression", {'INPUT':cpLyr, 'EXPRESSION':srchCriteria, 'METHOD':0})
+                if 'SumField' in calc:
+                    sumField = calc['SumField']
+                else:
+                    sumField = None
+                
+                if 'GroupBy' in calc:
+                    groupBy = calc['GroupBy']
+                else:
+                    groupBy = ""
 
-                            try:
-                                summaryType = layers['BillofQuantities']['stats']['Stat'+str(i)]['SummaryType']
-                            except:
-                                summaryType = "Count"
+                if 'Criteria' not in calc: #straight count
+                    searchLyr.selectAll()
+                else:
+                    criteria = calc['Criteria']
+                    searchLyr.selectByExpression(criteria)
 
-                            if summaryType == "Count":
-                                totalFeat = cpLyr.selectedFeatureCount()
-                            elif summaryType == "Length":
-                                totalFeat = 0
-                                for f in cpLyr.selectedFeatures():
-                                    totalFeat += f.geometry().length()
+                if groupBy == "":
+                    if summaryType == "Count":
+                        total = searchLyr.selectedFeatureCount()
+                    elif summaryType == "Sum":
+                        if sumField is None:
+                            results.append({headers[0]:calcTitle, headers[-1]:'Invalid'})
+                            continue
 
+                        total = 0
+                        try:
+                            for f in searchLyr.selectedFeatures():
+                                if f[sumField] != NULL:
+                                    total += f[sumField]
+                        except Exception as e:
+                            print(type(e), e)
+                            results.append({headers[0]:calcTitle, headers[-1]:'Invalid'})
+                            continue
+                    elif summaryType == "Length":
+                        total = 0
+                        for f in searchLyr.selectedFeatures():
+                            total += f.geometry().length()
 
-                            #get the results, for selecting everything else - this is horrid, there must be a better way ...
-                            inLocLyr = QgsVectorLayer("Polygon?crs=EPSG:27700", "Temp_Boundary", "memory")
-                            inLocLyr.dataProvider().addFeatures(cpLyr.selectedFeatures())
-                            if inLocLyr.featureCount() == 0:    #wrong layer type
-                                inLocLyr = QgsVectorLayer("Point?crs=EPSG:27700", "Temp_Boundary", "memory")
-                                inLocLyr.dataProvider().addFeatures(cpLyr.selectedFeatures())
-                                if inLocLyr.featureCount() == 0:    #wrong layer type
-                                    inLocLyr = QgsVectorLayer("Polyline?crs=EPSG:27700", "Temp_Boundary", "memory")
-                                    inLocLyr.dataProvider().addFeatures(cpLyr.selectedFeatures())
+                    # Get records that intersect locLyr which is only the LOC polygons
+                    processing.run("qgis:selectbylocation", {'INPUT':searchLyr, 'INTERSECT':locLyr, 'METHOD':0, 'PREDICATE':[0]})
+                    if criteria != "":
+                        searchLyr.selectByExpression(criteria, QgsVectorLayer.SelectBehavior.IntersectSelection)
+                    if summaryType == "Count":
+                        inLoc = searchLyr.selectedFeatureCount()
+                    elif summaryType == "Sum":
+                        inLoc = 0
+                        for f in searchLyr.selectedFeatures():
+                            if f[sumField] != NULL:
+                                inLoc += f[sumField]
+                    elif summaryType == "Length":
+                        inLoc = 0
+                        for f in searchLyr.selectedFeatures():
+                            inLoc += f.geometry().length()
 
-                            #print ('inLocLyr all ' + str(inLocLyr.featureCount()))
+                    buildable = total - inLoc
 
-                            #get records that intersect SNLyr which is only the LOC polygons
-                            processing.run("qgis:selectbylocation", {'INPUT':inLocLyr, 'INTERSECT':SNLyr, 'METHOD':0, 'PREDICATE':[0]})
-
-                            #print ('inLocLyr LOC ' + str(inLocLyr.selectedFeatureCount()))
-
-                            if summaryType == "Count":
-                                LOCFeatCount = inLocLyr.selectedFeatureCount()
-                            elif summaryType == "Length":
-                                LOCFeatCount = 0
-                                for f in inLocLyr.selectedFeatures():
-                                    LOCFeatCount += f.geometry().length()
-
-                            buildableFeatCount = totalFeat - LOCFeatCount
-
-                            ans = common.writeToCSV(self.iface, csvFileName,{'Item': srchName, 'Quantity': str(totalFeat), \
-                                'Buildable': str(buildableFeatCount), 'In LOC': str(LOCFeatCount)}, isFirst)
-
-                            j+=1
-                            try:
-                                srchName = layers['BillofQuantities']['stats']['Stat'+str(i)]['Calculation'+str(j)]['Title']
-                            except:
-                                srchName = ""
+                    results.append({headers[0]:calcTitle, headers[-3]:buildable, headers[-2]: inLoc, headers[-1]: total})
 
                 else: #group by the field name, write each value+count to the csv
-                    #processing.run("qgis:saveselectedfeatures",cpLyr,'xgtemp')
-                    ans = common.writeToCSV(self.iface, csvFileName,{'Item':searchName, 'Quantity': ''}, isFirst)
-                    isFirst = False
+                    groups = {}
+                    ordered = QgsFeatureRequest()
+                    ordered.addOrderBy(groupBy)
+                    if searchLyr.selectedFeatureCount() > 0:
+                        for f in searchLyr.getSelectedFeatures(ordered):
+                            try:
+                                group = f[groupBy]
+                            except:
+                                results.append({headers[0]:calcTitle, headers[-1]:'Invalid'})
+                                continue
 
-                   # tempLyr2 = QgsVectorLayer("Point?crs=EPSG:27700", "temp", "memory")
-                   # tempLyr2.dataProvider().addAttributes( [ QgsField("Desc", QVariant.String) ] )
-                   # tempLyr2.updateFields()
-                    aDict = {}
+                            if group not in groups:
+                                groups[group] = {'buildable':0, 'inLoc':0, 'total':0}
 
-                    for feat in cpLyr.selectedFeatures():
-                        #print('fldName='+ fldName)
-                        #fldVal = ''
-                        fldVal = feat[fldName]
-                        #print('fldVal='+fldVal)
-                        dictValue = aDict.get(fldVal)
-                        if dictValue is None:
-                            aDict[fldVal] = 1
-                        else:
-                            aDict[fldVal] = dictValue + 1
+                            if summaryType == "Count":
+                                groups[group]['total'] += 1
+                            elif summaryType == "Sum":
+                                if sumField is None:
+                                    results.append({headers[0]:calcTitle, headers[-1]:'Invalid'})
+                                    break
 
-                        #pc = QgsVectorLayerUtils.createFeature(tempLyr2)
-                        #pc.setGeometry(feat.geometry())
-                        #pc.setAttribute('Desc', feat[fldName])
+                                try:
+                                    groups[group]['total'] += f[sumField]
+                                except:
+                                    results.append({headers[0]:calcTitle, headers[-1]:'Invalid'})
+                                    break
+                            elif summaryType == "Length":
+                                groups[group]['total'] += f.geometry().length()
 
-                    #tempLyr2.commitChanges()
+                            # Get records that intersect locLyr which is only the LOC polygons
+                            processing.run("qgis:selectbylocation", {'INPUT':searchLyr, 'INTERSECT':locLyr, 'METHOD':0, 'PREDICATE':[0]})
+                            if summaryType == "Count":
+                                groups[group]['inLoc'] += 1
+                            elif summaryType == "Sum":
+                                groups[group]['inLoc'] += f[sumField]
+                            elif summaryType == "Length":
+                                groups[group]['inLoc'] += f.geometry().length()
 
-                    #query = "Select count(*) numOf,{0} from [temp] group by {0}".format(fldName)
-                   # vlayer = QgsVectorLayer( "?query={}".format(query), 'counts_', "virtual" )
-                    for x, y in aDict.items():
-                        #print (x)
-                        #print (aDict[x])
-                        ans = common.writeToCSV(self.iface, csvFileName,{'Item': x, 'Quantity': y}, isFirst)
-                        isFirst = False
+                            groups[group]['buildable'] = groups[group]['total'] - groups[group]['inLoc']
 
-            i+=1
-            try:
-                searchLayer = layers['BillofQuantities']['stats']['Stat'+str(i)]['Layer']
-            except:
-                searchLayer = ""
+                        for group, val in groups.items():
+                            results.append({headers[0]:calcTitle, headers[1]: group, headers[-3]:val['buildable'], \
+                                            headers[-2]: val['inLoc'], headers[-1]: val['total']})
+                    else:
+                        results.append({headers[0]:calcTitle, headers[-3]: 0, headers[-2]: 0, headers[-1]: 0})
+            searchLyr.removeSelection()
 
-        #select all properties overlapping
-    #    bldLayerName = layers['Premises']['name']
-    #    cpLyr = common.getLayerByName(self.iface, QgsProject.instance(), bldLayerName, True)
-    #    processing.run("qgis:selectbylocation", {'INPUT':cpLyr, 'INTERSECT':tempLyr, 'METHOD':0, 'PREDICATE':[0]})
+        ans = common.writeToCSV(self.iface, csvFileName, headers, results)
 
-        #add Premises FED total | cpLyr.selectedFeatureCount()
-        #to a csv
-        #BillofQuantites
-
-        #csvData = []
-
-        #csvData.append({'Item':'Premises FED total', 'Quantity': str(cpLyr.selectedFeatureCount())})
-
-        #csvData.append({'Item':'Premises aerially fed', 'Quantity': str(cpLyr.selectedFeatureCount())})
-
-
-    #    ans = writeToCSV(self.iface, csvFileName,{'Item':'Premises FED total', 'Quantity': str(cpLyr.selectedFeatureCount())}, True)
-    #    ans = writeToCSV(self.iface, csvFileName,{'Item':'Premises aerially fed', 'Quantity': str(cpLyr.selectedFeatureCount())})
-
-        #ans = writeToCSV(self.iface, csvFileName,csvData)
-
-        QMessageBox.information(self.iface.mainWindow(),'Network Design Toolkit', 'Bill of quantities file created.\n' + csvFileName , QMessageBox.Ok)
-
+        if ans:
+            subprocess.run(['start', csvFileName], shell=True, check=True)
 
     def CreatePropertyCountLayer(self):
         layers = common.prerequisites['layers']
