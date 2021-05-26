@@ -81,6 +81,8 @@ def updateNodeAttributes(iface):
 
     if len(failed_layers) > 0:
         QMessageBox.warning("Attribute update failure", "The following layers were not updated: {}".format('; '.join(failed_layers)))
+    else:
+        iface.messageBar().pushSuccess('Nodes updated', 'Node attribute update completed')
 
 def updatePremisesAttributes(iface, bdryLyr, bdryFeat):
     '''
