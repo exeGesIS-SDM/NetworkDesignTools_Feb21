@@ -400,6 +400,7 @@ class DropCableBuilder(QObject):
                 sub_feed.setGeometry(QgsGeometry.fromPointXY(point))
                 sub_feed.setAttribute(self.sub_fields['id'], max_id + 1)
                 sub_feed.setAttribute(self.sub_fields['dropCount'], 1)
+                sub_feed.setAttribute(self.sub_fields['surface'], 'Footway')
 
                 line =  QgsGeometry.fromPolyline([QgsPoint(self.node.geometry().asPoint()), QgsPoint(point)])
                 s = line.closestSegmentWithContext(premise)
