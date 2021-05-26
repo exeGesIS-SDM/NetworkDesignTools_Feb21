@@ -28,6 +28,7 @@ def createSLD(iface, bdry_lyr):
     file_name = QFileDialog.getSaveFileName(caption='Save SLD As', filter='SVG (Scalable Vector Graphics) (*.svg)', directory=start_dir)[0]
     if len(file_name) == 0:
         return
+
     dir_name = os.path.dirname(file_name)
     if not os.path.exists(dir_name):
         os.makedirs(dir_name)
@@ -46,7 +47,7 @@ def createSLD(iface, bdry_lyr):
     request = QgsFeatureRequest()
 
     # Set to draw from left to right
-    g.attr(rankdir='LR', splines='ortho', ranksep='4', pad='0.25')
+    g.attr(rankdir='LR', splines='ortho', ranksep='3', pad='0.25')
     g.attr('edge', fontsize='12', fontname='arial')
     g.attr('node', fontsize='12', fontname='arial')
 
