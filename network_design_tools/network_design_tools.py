@@ -758,7 +758,7 @@ class NetworkDesignTools:
             errorCode, errorMsg = QgsVectorFileWriter.writeAsVectorFormat(cpLyr, csvFileName, "utf-8", None, "CSV", onlySelected=True, attributes=attributeList)
 
         if errorCode == QgsVectorFileWriter.NoError:
-            QMessageBox.information(self.iface.mainWindow(),'Network Design Toolkit', 'Release sheet file created.\n' + csvFileName , QMessageBox.Ok)
+            subprocess.run(['start', csvFileName], shell=True, check=True)
         else:
             QMessageBox.critical(self.iface.mainWindow(),'Network Design Toolkit', 'Failed to create release sheet.\n{}: {}'.format(errorCode, errorMsg))
 
