@@ -375,7 +375,7 @@ class NetworkDesignTools:
         if self.cableBuilder.is_valid:
             self.cableBuilder.create_drop_cables(nodeId, bdryId)
 
-    def finishedDCObject(self):      
+    def finishedDCObject(self):
         self.linkDCBtn.setChecked(True)
         self.linkDC()
 
@@ -605,64 +605,49 @@ class NetworkDesignTools:
         tempLyr = QgsVectorLayer("Polygon?crs=EPSG:27700", "Temp_Boundary", "memory")
         tempLyr.dataProvider().addFeature(bdryFeat)
 
-        bldLayerName = layers['Premises']['name']
-
-        cpLyr = common.getLayerByName(self.iface, QgsProject.instance(), bldLayerName, True)
+        cpLyr = common.getLayerByName(self.iface, QgsProject.instance(), layers['Premises']['name'], True)
         if cpLyr is None:
             return
         processing.run("qgis:selectbylocation", {'INPUT':cpLyr, 'INTERSECT':tempLyr, 'METHOD':0, 'PREDICATE':[0]})
 
-        tempLyr2 = QgsVectorLayer("Point?crs=EPSG:27700", "Temp_Prop", "memory")
-        tempLyr2.dataProvider().addAttributes( [ QgsField("x", QVariant.Double), QgsField("y", QVariant.Double) ] )
-        tempLyr2.updateFields()
-        for feat in cpLyr.selectedFeatures():
-            pc = QgsVectorLayerUtils.createFeature(tempLyr2)
-            pc.setGeometry(feat.geometry())
-            #feat.asPoint().x()
-            #feat.asPoint().y()
-            pc.setAttribute('x', feat['X'])
-            pc.setAttribute('y', feat['Y'])
-            tempLyr2.dataProvider().addFeature(pc)
+        topoAreaLyr = common.getLayerByName(self.iface, QgsProject.instance(), layers['TopoArea']['name'], True)
+        if topoAreaLyr is None:
+            return
 
-        tempLyr2.commitChanges()
+        cpSelLyr = QgsProcessingFeatureSourceDefinition(cpLyr.source(), selectedOnly=True)
+        processing.run("qgis:selectbylocation", {'INPUT':topoAreaLyr, 'INTERSECT':cpSelLyr, 'METHOD':0, 'PREDICATE':[1]}) # 1 = Contains
 
-        PCLayerName = layers['PropertyCount']['name']
-        PCCountColName = layers['PropertyCount']['fields']['Count']
+        topoAreaSelLyr = QgsProcessingFeatureSourceDefinition(topoAreaLyr.source(), selectedOnly=True)
 
-        QgsProject.instance().addMapLayer(tempLyr2)
+        
+        propCountColName = layers['PropertyCount']['fields']['Count']
+        result = processing.run("qgis:countpointsinpolygon", {'CLASSFIELD' : None, 'FIELD' : propCountColName, 'OUTPUT' : 'TEMPORARY_OUTPUT', \
+                                'POINTS' : cpSelLyr, 'POLYGONS' : topoAreaSelLyr, 'WEIGHT' : None })
+        
+        pcLayerName = layers['PropertyCount']['name']       
 
-        query = "Select count(*) " + PCCountColName + ",x,y from [Temp_Prop] group by {0}".format('x,y')
-        vlayer = QgsVectorLayer( "?query={}".format(query), 'counts_'+bldLayerName, "virtual" )
-        #append each building to a property count layer,with a count of properties in the building
-        vlayer.dataProvider().addAttributes( [ QgsField(PCCountColName, QVariant.Int) ] )
-        vlayer.updateFields()
-
-        QgsProject.instance().addMapLayer(vlayer)
-
-        pcLyr = common.getLayerByName(self.iface, QgsProject.instance(), PCLayerName, True)
+        pcLyr = common.getLayerByName(self.iface, QgsProject.instance(), pcLayerName, True)
         if pcLyr is None:
             return
+
+        featCount = 0
         pcLyr.startEditing()
         try:
             # Delete all existing features
             idList = [feat.id() for feat in pcLyr.getFeatures()]
             pcLyr.deleteFeatures(idList)
 
-            for feat in vlayer.getFeatures():
+            for feat in result['OUTPUT'].getFeatures():
                 pc = QgsVectorLayerUtils.createFeature(pcLyr)
-                gPnt = QgsGeometry.fromPointXY(QgsPointXY(feat['x'],feat['y']))
-                pc.setGeometry(gPnt)#(feat.geometry())
-                pc.setAttribute(PCCountColName, feat[PCCountColName])
+                pc.setGeometry(feat.geometry().centroid())
+                pc.setAttribute(propCountColName, feat[propCountColName])
                 pcLyr.addFeature(pc)
+                featCount += 1
         except Exception as e:
             print(e)
 
         pcLyr.commitChanges()
         pcLyr.rollBack()
-
-        featCount = vlayer.featureCount()
-        QgsProject.instance().removeMapLayer(vlayer)
-        QgsProject.instance().removeMapLayer(tempLyr2)
 
         QMessageBox.information(self.iface.mainWindow(),'Network Design Toolkit', \
                                 str(featCount) +' property counts inserted.', QMessageBox.Ok)
