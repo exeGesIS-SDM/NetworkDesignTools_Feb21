@@ -124,9 +124,9 @@ def updatePremisesAttributes(iface, bdryLyr, bdryFeat):
                 bdryType = bdryfeat['Type']
                 if bdryType == '1': # UGPN
                     cpfeat.setAttribute('PN', bdryfeat['Name'])
-                elif bdryType in ('2', '3'): # UGSN, PMSN
+                elif bdryType in ('2', '3', '10'): # UGSN, PMSN, MSN
                     cpfeat.setAttribute('SN', bdryfeat['Name'])
-                elif bdryType in ('4', '5'): # UGCE, PMCE
+                elif bdryType in ('4', '5', '11'): # UGCE, PMCE, MCE
                     cpfeat.setAttribute('TN', bdryfeat['Name'])
                 elif bdryType == '8': # AC
                     cpfeat.setAttribute('AC', bdryfeat['Name'])
@@ -155,6 +155,8 @@ def updatePremisesAttributes(iface, bdryLyr, bdryFeat):
 
     cpLyr.removeSelection()
     bdryLyr.removeSelection()
+
+    iface.messageBar().pushSuccess('Premises updated', 'Premises attribute update completed')
 
 def getPremisesAddress(premises, fields):
     addressFields = common.prerequisites['settings']['premisesAddressFields']
