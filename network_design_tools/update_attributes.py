@@ -1,4 +1,7 @@
-from qgis.core import QgsProject, QgsVectorLayer, QgsSpatialIndex, NULL
+from math import ceil
+from qgis.core import QgsProject, QgsVectorLayer, QgsSpatialIndex, QgsPoint, NULL, \
+                      QgsFeatureRequest, QgsRectangle, QgsVectorLayerUtils, \
+                      QgsGeometry
 from PyQt5.QtWidgets import QMessageBox
 import processing
 from network_design_tools import common
@@ -148,7 +151,7 @@ def updatePremisesAttributes(iface, bdryLyr, bdryFeat):
                 cableLyr.selectByExpression('"UPRN" = \'{}\''.format(cpfeat['UPRN']))
                 if cableLyr.selectedFeatureCount() > 0:
                     clength = cableLyr.selectedFeatures()[0].geometry().length()
-                    cpfeat.setAttribute('Distance', clength)
+                    cpfeat.setAttribute('Distance', ceil(clength))
 
                 cpLyr.updateFeature(cpfeat)
 

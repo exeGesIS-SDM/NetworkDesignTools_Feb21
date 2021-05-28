@@ -1,7 +1,7 @@
 from PyQt5.QtCore import pyqtSignal, QObject
 from qgis.core import QgsProject, QgsVectorLayer, QgsPoint, QgsProcessingFeatureSourceDefinition, \
                       QgsFeatureRequest, QgsVectorLayerUtils, QgsGeometry, QgsSpatialIndex, NULL, \
-                      QgsRectangle
+                      QgsRectangle, QgsProcessingException
 from qgis.PyQt.QtWidgets import QMessageBox
 import processing
 from network_design_tools import common
@@ -95,7 +95,8 @@ def createNodeCable(iface, routingType, startPoint, startLayerName, startFid, en
     except Exception as e:
         print(e)
         QMessageBox.warning(iface.mainWindow(), 'Cable not created', \
-            'Cable from {}: {} to {}: {} could not be calculated'.format(startLayerName, startId, endLayerName, '-'.join(endIdSplit)))
+            'Cable from {}: {} to {}: {} could not be calculated. '.format(startLayerName, startId, endLayerName, '-'.join(endIdSplit)) + \
+            'Please check ducts are snapped and there are no invalid geometries in BT Duct / Duct layers.')
     finally:
         cable_lyr.rollBack()
         QgsProject.instance().removeMapLayer(merged_duct_lyr)
@@ -173,7 +174,12 @@ class DropCableBuilder(QObject):
 
         # Get the intersecting properties
         bdry_sel_lyr = QgsProcessingFeatureSourceDefinition(self.bdry_lyr.source(), selectedFeaturesOnly = True)
-        processing.run("qgis:selectbylocation", {'INPUT':self.cp_lyr, 'INTERSECT':bdry_sel_lyr, 'METHOD':0, 'PREDICATE':[6]}) # 6 = Within
+        try:
+            processing.run("qgis:selectbylocation", {'INPUT':self.cp_lyr, 'INTERSECT':bdry_sel_lyr, 'METHOD':0, 'PREDICATE':[6]}) # 6 = Within
+        except QgsProcessingException as e:
+            QMessageBox.critical(self.iface.mainWindow(),'Selection Failure', \
+                                'Failed to select Customer Premises. Please check geometries in Boundaries layer are valid.\nQGIS error: {}'.format(e), QMessageBox.Ok)
+            return
 
         if bdry_type in ('2', '3'): # UGSN / PMSN
             processing.run("qgis:selectbylocation", {'INPUT':self.bdry_lyr, 'INTERSECT':bdry_sel_lyr, 'METHOD':0, 'PREDICATE':[5, 6]}) # 5 = Overlaps
@@ -281,8 +287,9 @@ class DropCableBuilder(QObject):
             except Exception as e:
                 print(e)
                 QMessageBox.warning(self.iface.mainWindow(), 'Cable not created', \
-                    'Cable from {} to UPRN {} could not be calculated'.format(self.node[self.layers['Node']['fields']['id']], \
-                        self.premises_list[self.premises_id][self.uprn_field]))
+                    'Cable from {} to UPRN {} could not be calculated. '.format(self.node[self.layers['Node']['fields']['id']], \
+                                                                                self.premises_list[self.premises_id][self.uprn_field]) + \
+                    'Please check nodes are snapped and there are no invalid geometries in BT Duct / Duct layers.')
             finally:
                 self.cable_lyr.rollBack()
                 QgsProject.instance().removeMapLayer(merged_duct_lyr)

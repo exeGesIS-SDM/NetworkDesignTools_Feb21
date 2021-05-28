@@ -1,5 +1,5 @@
 {
-    "version": "0.3.7",
+    "version": "0.3.9",
     "layers":{
          "Boundaries": {
              "name": "Boundaries",
@@ -296,9 +296,25 @@
                     "Layer": "BT Pole",
                     "Calculations": {
                         "Calculation0":{"Criteria": "Use = 3",  "Title": "Carrier" },
-                        "Calculation1":{"Criteria": "Use = 1",  "Title": "Pole top equipment" },
-                        "Calculation2":{"Criteria": "Use = 2",  "Title": "Cable up a pole (per cable)" },
-                        "Calculation3":{"Criteria": "Use = 4",  "Title": "JU pole" }
+                        "Calculation1":{"Criteria": "Use IN (1, 2, 4)",  "Title": "Pole top equipment" }
+                    },
+                    "SummaryType": "Count"  
+                },
+
+                "Stat5a": {
+                    "Title": "",
+                    "Layer": "Cable",
+                    "Calculations": {
+                        "Calculation0":{"Criteria": "\"V_Length\" > 0",  "Multiplier": 0.1, "SumField": "V_Length", "Title": "Cable up a pole (per cable)" }
+                    },
+                    "SummaryType": "Sum"
+                },
+
+                "Stat5b": {
+                    "Title": "",
+                    "Layer": "JU pole",
+                    "Calculations": {
+                        "Calculation3":{"Title": "JU pole" }
                     },
                     "SummaryType": "Count"  
                 },
@@ -365,16 +381,13 @@
                         "Calculation5":{"Criteria": "Type = 3 AND Surface = 'Footway'",  "Title": "FW6 in Footway" }, 
                         "Calculation6":{"Criteria": "Type = 4 AND Surface = 'Verge'",  "Title": "FW10 in Verge" },
                         "Calculation7":{"Criteria": "Type = 4 AND Surface = 'Footway'",  "Title": "FW10 in Footway" },
-                        "Calculation8":{"Criteria": "Type = 5",  "Title": "CW1" }, 
-                        "Calculation9":{"Criteria": "Surface = 'Verge'",  "Title": "Subscriber feeds in Verge" },
-                        "Calculation10":{"Criteria": "Surface = 'Footway'",  "Title": "Subscriber feeds in FW" },
-                        "Calculation11":{"Criteria": "Surface = 'Carriageway'",  "Title": "Subscriber feeds in CW" }
+                        "Calculation8":{"Criteria": "Type = 5",  "Title": "CW1" }
                     }, 
                     "SummaryType": "Count"  
                 },
 
                 "Stat11": {
-                    "Title": "Subscriber Feeds",
+                    "Title": "",
                     "Layer": "Subscriber Feed",
                     "Calculations": {
                         "Calculation9":{"Criteria": "Surface = 'Verge'",  "Title": "Subscriber feeds in Verge" },
@@ -385,7 +398,7 @@
                 },
 
                 "Stat12": {
-                    "Title": "Gel Wraps",
+                    "Title": "",
                     "Layer": "Gel Wrap",
                     "Calculations": {
                         "Calculation0":{"Title": "Gel wrap" }

@@ -2,7 +2,7 @@ import os
 from textwrap import wrap
 from qgis.PyQt.QtWidgets import QMessageBox, QFileDialog
 from qgis.core import QgsProject, QgsProcessingFeatureSourceDefinition, QgsFeatureRequest, \
-                      QgsVectorLayer, NULL
+                      QgsVectorLayer, NULL, QgsProcessingException
 import processing
 try:
     from graphviz import Graph
@@ -34,7 +34,12 @@ def createSLD(iface, bdry_lyr):
         os.makedirs(dir_name)
 
     bdry_sel_lyr = QgsProcessingFeatureSourceDefinition(bdry_lyr.source(), selectedFeaturesOnly = True)
-    processing.run("qgis:selectbylocation", { 'INPUT' : nodes_lyr, 'INTERSECT' : bdry_sel_lyr, 'METHOD' : 0, 'PREDICATE' : [6] })
+    try:
+        processing.run("qgis:selectbylocation", { 'INPUT' : nodes_lyr, 'INTERSECT' : bdry_sel_lyr, 'METHOD' : 0, 'PREDICATE' : [6] })
+    except QgsProcessingException as e:
+        QMessageBox.critical(iface.mainWindow(),'Selection Failure', \
+                            'Failed to select Nodes. Please check geometries in Boundaries layer are valid.\nQGIS error: {}'.format(e), QMessageBox.Ok)
+        return
 
     file_no_ext = os.path.splitext(os.path.basename(file_name))[0]
     try:
