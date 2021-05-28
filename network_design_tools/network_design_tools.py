@@ -618,7 +618,10 @@ class NetworkDesignTools:
         ans = common.writeToCSV(self.iface, csvFileName, headers, results)
 
         if ans:
-            subprocess.run(['start', csvFileName], shell=True, check=True)
+            try:
+                subprocess.run('start excel.exe "{}"'.format(csvFileName), shell=True, check=True)
+            except:
+                self.iface.messageBar().pushSuccess("Bill of Quantities created", "Bill of Quantities saved to {}".format(csvFileName))
 
     def CreatePropertyCountLayer(self):
         layers = common.prerequisites['layers']
@@ -784,7 +787,10 @@ class NetworkDesignTools:
             errorCode, errorMsg = QgsVectorFileWriter.writeAsVectorFormat(cpLyr, csvFileName, "utf-8", None, "CSV", onlySelected=True, attributes=attributeList)
 
         if errorCode == QgsVectorFileWriter.NoError:
-            subprocess.run(['start', csvFileName], shell=True, check=True)
+            try:
+                subprocess.run('start excel.exe "{}"'.format(csvFileName), check=True)
+            except:
+                self.iface.messageBar().pushSuccess("Bill of Quantities created", "Bill of Quantities saved to {}".format(csvFileName))
         else:
             QMessageBox.critical(self.iface.mainWindow(),'Network Design Toolkit', 'Failed to create release sheet.\n{}: {}'.format(errorCode, errorMsg))
 
