@@ -51,10 +51,7 @@ def createNodeCable(iface, routingType, startPoint, startLayerName, startFid, en
 
     startId = startPt[startFields['id']]
     endIdSplit = endPt[endFields['id']].split('-')
-    endId = []
-    for word in endIdSplit:
-        if word not in startId:
-            endId.append(word)
+    endId = endIdSplit[-1]
 
     cableName = '{}/{}'.format(startId, '-'.join(endId))
 
