@@ -135,7 +135,7 @@
             }
         },
         "NewPole": {
-            "name": "New Pole",
+            "name": "New pole",
             "source": "./Shapefiles/New Pole.shp",
             "fields": {
                 "id": "id",
@@ -150,7 +150,8 @@
                 "fid": "Fid",
                 "height": "Height",
                 "class": "Class",
-                "loc": "LOC"
+                "loc": "LOC",
+                "address": "Address"
             }
         },
          "Node": {

@@ -23,7 +23,7 @@ def updateNodeAttributes(iface):
 
     failed_layers = []
     ### Update cabinet/joints layers ###
-    for lyr_name in ['Cabinet', 'Joint']:
+    for lyr_name in ['Cabinet', 'Joint', 'NewPole']:
         lyr = common.getLayerByName(iface, QgsProject.instance(), layers[lyr_name]['name'], False)
         if lyr is None:
             failed_layers.append(layers[lyr_name]['name'])
@@ -83,7 +83,7 @@ def updateNodeAttributes(iface):
             bdryLyr.removeSelection()
 
     if len(failed_layers) > 0:
-        QMessageBox.warning("Attribute update failure", "The following layers were not updated: {}".format('; '.join(failed_layers)))
+        QMessageBox.warning(iface.mainWindow(), "Attribute update failure", "The following layers were not updated: {}".format('; '.join(failed_layers)))
     else:
         iface.messageBar().pushSuccess('Nodes updated', 'Node attribute update completed')
 
