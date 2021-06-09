@@ -12,5 +12,6 @@
         <file>icons/houses_update.png</file>
         <file>icons/node_update.png</file>
         <file>icons/sld.png</file>
+        <file>icons/cable_count.png</file>
     </qresource>
 </RCC>
