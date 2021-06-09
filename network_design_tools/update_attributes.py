@@ -1,3 +1,4 @@
+from math import ceil
 from qgis.core import QgsProject, QgsVectorLayer, QgsSpatialIndex, QgsPoint, NULL, \
                       QgsFeatureRequest, QgsRectangle, QgsVectorLayerUtils, \
                       QgsGeometry
@@ -145,7 +146,7 @@ def updateNodeAttributes(iface):
 
     failed_layers = []
     ### Update cabinet/joints layers ###
-    for lyr_name in ['Cabinet', 'Joint']:
+    for lyr_name in ['Cabinet', 'Joint', 'NewPole']:
         lyr = common.getLayerByName(iface, QgsProject.instance(), layers[lyr_name]['name'], False)
         if lyr is None:
             failed_layers.append(layers[lyr_name]['name'])
@@ -205,7 +206,7 @@ def updateNodeAttributes(iface):
             bdryLyr.removeSelection()
 
     if len(failed_layers) > 0:
-        QMessageBox.warning("Attribute update failure", "The following layers were not updated: {}".format('; '.join(failed_layers)))
+        QMessageBox.warning(iface.mainWindow(), "Attribute update failure", "The following layers were not updated: {}".format('; '.join(failed_layers)))
     else:
         iface.messageBar().pushSuccess('Nodes updated', 'Node attribute update completed')
 
@@ -273,7 +274,7 @@ def updatePremisesAttributes(iface, bdryLyr, bdryFeat):
                 cableLyr.selectByExpression('"UPRN" = \'{}\''.format(cpfeat['UPRN']))
                 if cableLyr.selectedFeatureCount() > 0:
                     clength = cableLyr.selectedFeatures()[0].geometry().length()
-                    cpfeat.setAttribute('Distance', clength)
+                    cpfeat.setAttribute('Distance', ceil(clength))
 
                 cpLyr.updateFeature(cpfeat)
 

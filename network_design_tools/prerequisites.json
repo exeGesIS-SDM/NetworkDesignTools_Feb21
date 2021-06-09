@@ -1,5 +1,5 @@
 {
-    "version": "0.3.7",
+    "version": "0.3.9",
     "layers":{
          "Boundaries": {
              "name": "Boundaries",
@@ -151,7 +151,7 @@
             }
         },
         "NewPole": {
-            "name": "New Pole",
+            "name": "New pole",
             "source": "./Shapefiles/New Pole.shp",
             "fields": {
                 "id": "id",
@@ -166,7 +166,8 @@
                 "fid": "Fid",
                 "height": "Height",
                 "class": "Class",
-                "loc": "LOC"
+                "loc": "LOC",
+                "address": "Address"
             }
         },
          "Node": {
@@ -312,9 +313,25 @@
                     "Layer": "BT Pole",
                     "Calculations": {
                         "Calculation0":{"Criteria": "Use = 3",  "Title": "Carrier" },
-                        "Calculation1":{"Criteria": "Use = 1",  "Title": "Pole top equipment" },
-                        "Calculation2":{"Criteria": "Use = 2",  "Title": "Cable up a pole (per cable)" },
-                        "Calculation3":{"Criteria": "Use = 4",  "Title": "JU pole" }
+                        "Calculation1":{"Criteria": "Use IN (1, 2, 4)",  "Title": "Pole top equipment" }
+                    },
+                    "SummaryType": "Count"  
+                },
+
+                "Stat5a": {
+                    "Title": "",
+                    "Layer": "Cable",
+                    "Calculations": {
+                        "Calculation0":{"Criteria": "\"V_Length\" > 0",  "Multiplier": 0.1, "SumField": "V_Length", "Title": "Cable up a pole (per cable)" }
+                    },
+                    "SummaryType": "Sum"
+                },
+
+                "Stat5b": {
+                    "Title": "",
+                    "Layer": "JU pole",
+                    "Calculations": {
+                        "Calculation3":{"Title": "JU pole" }
                     },
                     "SummaryType": "Count"  
                 },
@@ -326,7 +343,7 @@
                         "Calculation0":{"Criteria": "Lead_Spine = 'Spine'",  "Title": "Facility in spine duct" },
                         "Calculation1":{"Criteria": "Lead_Spine = 'Lead in'",  "Title": "Facility in lead in duct" }
                     },
-                    "SummaryType": "Count"  
+                    "SummaryType": "Length"  
                 },
 
                 "Stat7": {
@@ -343,19 +360,23 @@
                     "Title": "New Civils",
                     "Layer": "Duct",
                     "Calculations": {
-                        "Calculation0":{"Criteria": "\"7/3.5mm\" IS NOT NULL AND Surface = 'Verge'",  "Title": "Narrow trench in verge" },
-                        "Calculation1":{"Criteria": "\"7/3.5mm\" IS NOT NULL AND Surface = 'FW' AND Material = 2",  "Title": "Narrow trench in FW- Unmade" },
-                        "Calculation2":{"Criteria": "\"7/3.5mm\" IS NOT NULL AND Surface = 'FW' AND Material = 3",  "Title": "Narrow trench in FW- Tarmac" },
-                        "Calculation3":{"Criteria": "\"7/3.5mm\" IS NOT NULL AND Surface = 'FW' AND Material = 4",  "Title": "Narrow trench in FW- Concrete" },
-                        "Calculation4":{"Criteria": "\"7/3.5mm\" IS NOT NULL AND Surface = 'FW' AND Material = 5",  "Title": "Narrow trench in FW- Modular" },
-                        "Calculation5":{"Criteria": "\"7/3.5mm\" IS NOT NULL AND Surface = 'CW' AND Material = 2",  "Title": "Narrow trench in CW- Unmade" }, 
-                        "Calculation6":{"Criteria": "\"7/3.5mm\" IS NOT NULL AND Surface = 'CW' AND Material = 3",  "Title": "Narrow trench in CW- Tarmac" },
-                        "Calculation7":{"Criteria": "\"7/3.5mm\" IS NOT NULL AND Surface = 'CW' AND Material = 4",  "Title": "Narrow trench in CW- Concrete" },
-                        "Calculation8":{"Criteria": "\"7/3.5mm\" IS NOT NULL AND Surface = 'CW' AND Material = 5",  "Title": "Narrow trench in CW- Modular" }, 
-                        "Calculation9":{"Criteria": "\"110mm\" IS NOT NULL AND Surface = 'CW' AND Material = 2",  "Title": "Traditional trench in CW- Unmade" },
-                        "Calculation10":{"Criteria": "\"110mm\" IS NOT NULL AND Surface = 'CW' AND Material = 3",  "Title": "Traditional trench in CW- Tarmac" },
-                        "Calculation11":{"Criteria": "\"110mm\" IS NOT NULL AND Surface = 'CW' AND Material = 4",  "Title": "Traditional trench in CW- Concrete" }, 
-                        "Calculation12":{"Criteria": "\"110mm\" IS NOT NULL AND Surface = 'CW' AND Material = 5",  "Title": "Traditional trench in CW- Modular" }
+                        "Calculation0":{"Criteria": "\"110mm\" IS NULL AND Surface = 'Verge'",  "Title": "Narrow trench in verge" },
+                        "Calculation1":{"Criteria": "\"110mm\" IS NULL AND Surface = 'FW' AND Material = 2",  "Title": "Narrow trench in FW- Unmade" },
+                        "Calculation2":{"Criteria": "\"110mm\" IS NULL AND Surface = 'FW' AND Material = 3",  "Title": "Narrow trench in FW- Tarmac" },
+                        "Calculation3":{"Criteria": "\"110mm\" IS NULL AND Surface = 'FW' AND Material = 4",  "Title": "Narrow trench in FW- Concrete" },
+                        "Calculation4":{"Criteria": "\"110mm\" IS NULL AND Surface = 'FW' AND Material = 5",  "Title": "Narrow trench in FW- Modular" },
+                        "Calculation5":{"Criteria": "\"110mm\" IS NULL AND Surface = 'CW' AND Material = 2",  "Title": "Narrow trench in CW- Unmade" }, 
+                        "Calculation6":{"Criteria": "\"110mm\" IS NULL AND Surface = 'CW' AND Material = 3",  "Title": "Narrow trench in CW- Tarmac" },
+                        "Calculation7":{"Criteria": "\"110mm\" IS NULL AND Surface = 'CW' AND Material = 4",  "Title": "Narrow trench in CW- Concrete" },
+                        "Calculation8":{"Criteria": "\"110mm\" IS NULL AND Surface = 'CW' AND Material = 5",  "Title": "Narrow trench in CW- Modular" }, 
+                        "Calculation9":{"Criteria": "\"110mm\" IS NOT NULL AND Surface = 'FW' AND Material = 2",  "Title": "Traditional trench in FW- Unmade" },
+                        "Calculation10":{"Criteria": "\"110mm\" IS NOT NULL AND Surface = 'FW' AND Material = 3",  "Title": "Traditional trench in FW- Tarmac" },
+                        "Calculation11":{"Criteria": "\"110mm\" IS NOT NULL AND Surface = 'FW' AND Material = 4",  "Title": "Traditional trench in FW- Concrete" },
+                        "Calculation12":{"Criteria": "\"110mm\" IS NOT NULL AND Surface = 'FW' AND Material = 5",  "Title": "Traditional trench in FW- Modular" },
+                        "Calculation13":{"Criteria": "\"110mm\" IS NOT NULL AND Surface = 'CW' AND Material = 2",  "Title": "Traditional trench in CW- Unmade" },
+                        "Calculation14":{"Criteria": "\"110mm\" IS NOT NULL AND Surface = 'CW' AND Material = 3",  "Title": "Traditional trench in CW- Tarmac" },
+                        "Calculation15":{"Criteria": "\"110mm\" IS NOT NULL AND Surface = 'CW' AND Material = 4",  "Title": "Traditional trench in CW- Concrete" }, 
+                        "Calculation16":{"Criteria": "\"110mm\" IS NOT NULL AND Surface = 'CW' AND Material = 5",  "Title": "Traditional trench in CW- Modular" }
                     },
                     "SummaryType": "Length"
                 },
@@ -381,16 +402,13 @@
                         "Calculation5":{"Criteria": "Type = 3 AND Surface = 'Footway'",  "Title": "FW6 in Footway" }, 
                         "Calculation6":{"Criteria": "Type = 4 AND Surface = 'Verge'",  "Title": "FW10 in Verge" },
                         "Calculation7":{"Criteria": "Type = 4 AND Surface = 'Footway'",  "Title": "FW10 in Footway" },
-                        "Calculation8":{"Criteria": "Type = 5",  "Title": "CW1" }, 
-                        "Calculation9":{"Criteria": "Surface = 'Verge'",  "Title": "Subscriber feeds in Verge" },
-                        "Calculation10":{"Criteria": "Surface = 'Footway'",  "Title": "Subscriber feeds in FW" },
-                        "Calculation11":{"Criteria": "Surface = 'Carriageway'",  "Title": "Subscriber feeds in CW" }
+                        "Calculation8":{"Criteria": "Type = 5",  "Title": "CW1" }
                     }, 
                     "SummaryType": "Count"  
                 },
 
                 "Stat11": {
-                    "Title": "Subscriber Feeds",
+                    "Title": "",
                     "Layer": "Subscriber Feed",
                     "Calculations": {
                         "Calculation9":{"Criteria": "Surface = 'Verge'",  "Title": "Subscriber feeds in Verge" },
@@ -401,7 +419,7 @@
                 },
 
                 "Stat12": {
-                    "Title": "Gel Wraps",
+                    "Title": "",
                     "Layer": "Gel Wrap",
                     "Calculations": {
                         "Calculation0":{"Title": "Gel wrap" }
@@ -484,6 +502,7 @@
         },
         "connectNodeLayers": ["Cabinet","Node","Joint"],
         "graphvizBinPath": "C:/Program Files/Graphviz/bin",
+        "mduThreshold": 3,
         "nodeUseBdryTypeLUT": {"1":"1", "2":"2", "3":"3", "4":"5", "5":"4"},
         "premisesAddressFields": ["ORG_NAME", "SUB_BLDG", "BLDG_NAME", "BLDG_NUM", "STREET", "LOCALITY", "POST_TOWN", "POSTCODE"],
         "releaseSheetFieldIndexList": "0,1,3,5,6,7,8,9,10,11,15,16,17,18,19,20,23",

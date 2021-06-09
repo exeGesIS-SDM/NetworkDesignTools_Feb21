@@ -1,8 +1,7 @@
 import os
-from textwrap import wrap
 from qgis.PyQt.QtWidgets import QMessageBox, QFileDialog
 from qgis.core import QgsProject, QgsProcessingFeatureSourceDefinition, QgsFeatureRequest, \
-                      QgsVectorLayer, NULL
+                      QgsVectorLayer, NULL, QgsProcessingException
 import processing
 try:
     from graphviz import Graph
@@ -28,12 +27,18 @@ def createSLD(iface, bdry_lyr):
     file_name = QFileDialog.getSaveFileName(caption='Save SLD As', filter='SVG (Scalable Vector Graphics) (*.svg)', directory=start_dir)[0]
     if len(file_name) == 0:
         return
+
     dir_name = os.path.dirname(file_name)
     if not os.path.exists(dir_name):
         os.makedirs(dir_name)
 
     bdry_sel_lyr = QgsProcessingFeatureSourceDefinition(bdry_lyr.source(), selectedFeaturesOnly = True)
-    processing.run("qgis:selectbylocation", { 'INPUT' : nodes_lyr, 'INTERSECT' : bdry_sel_lyr, 'METHOD' : 0, 'PREDICATE' : [6] })
+    try:
+        processing.run("qgis:selectbylocation", { 'INPUT' : nodes_lyr, 'INTERSECT' : bdry_sel_lyr, 'METHOD' : 0, 'PREDICATE' : [6] })
+    except QgsProcessingException as e:
+        QMessageBox.critical(iface.mainWindow(),'Selection Failure', \
+                            'Failed to select Nodes. Please check geometries in Boundaries layer are valid.\nQGIS error: {}'.format(e), QMessageBox.Ok)
+        return
 
     file_no_ext = os.path.splitext(os.path.basename(file_name))[0]
     try:
@@ -46,20 +51,23 @@ def createSLD(iface, bdry_lyr):
     request = QgsFeatureRequest()
 
     # Set to draw from left to right
-    g.attr(rankdir='LR', splines='ortho', ranksep='4', pad='0.25')
+    g.attr(rankdir='LR', splines='ortho', ranksep='3', pad='0.25')
     g.attr('edge', fontsize='12', fontname='arial')
     g.attr('node', fontsize='12', fontname='arial')
+
+    node_list = {}
 
     # Add primary node
     processing.run("qgis:selectbylocation", { 'INPUT' : nodes_lyr, 'INTERSECT' : bdry_sel_lyr, 'METHOD' : 0, 'PREDICATE' : [0] })
     nodes_lyr.selectByExpression('\"{}\" = 1'.format(node_flds['use']), QgsVectorLayer.IntersectSelection)
     for node in nodes_lyr.getSelectedFeatures():
         node_id = node[node_flds['id']]
+        node_list[node_id.split('-')[-1]] = node_id
         node_label = []
         node_label.append('<<b><table border="0" cellpadding="0" cellspacing="0">')
         node_label.append('<tr><td align="left">{}</td></tr>'.format(node_id))
         node_label.append('<tr><td align="left">{}P</td></tr>'.format(node[node_flds['premises']]))
-        node_label.append('<tr><td align="left">{}</td></tr>'.format('</td></tr><tr><td align="left">'.join(wrap(node[node_flds['address']], width=25))))
+        node_label.append('<tr><td align="left">{}</td></tr>'.format('</td></tr><tr><td align="left">'.join(get_address_list(node[node_flds['address']], 25))))
         node_label.append('</table></b>>')
         with g.subgraph(name='cluster_{}'.format(node_id)) as c:
             c.attr(style='invis')
@@ -72,11 +80,12 @@ def createSLD(iface, bdry_lyr):
     processing.run("qgis:selectbylocation", { 'INPUT' : joints_lyr, 'INTERSECT' : bdry_sel_lyr, 'METHOD' : 0, 'PREDICATE' : [0] })
     for joint in joints_lyr.getSelectedFeatures():
         joint_id = joint[joint_flds['id']]
+        node_list[joint_id.split('-')[-1]] = joint_id
         joint_label = []
         joint_label.append('<<b><table border="0" cellpadding="0" cellspacing="0">')
         joint_label.append('<tr><td align="left">{}</td></tr>'.format(joint_id))
         joint_label.append('<tr><td align="left">{}</td></tr>'.format(joint[joint_flds['size']]))
-        joint_label.append('<tr><td align="left">{}</td></tr>'.format('</td></tr><tr><td align="left">'.join(wrap(joint[joint_flds['address']], width=25))))
+        joint_label.append('<tr><td align="left">{}</td></tr>'.format('</td></tr><tr><td align="left">'.join(get_address_list(joint[joint_flds['address']], 25))))
         joint_label.append('</table></b>>')
         with g.subgraph(name='cluster_{}'.format(joint[joint_flds['id']])) as c:
             c.attr(style='invis')
@@ -90,20 +99,22 @@ def createSLD(iface, bdry_lyr):
     nodes_lyr.selectByExpression('\"{}\" IN (2, 5, 6, 7)'.format(node_flds['use']), QgsVectorLayer.IntersectSelection)
     for node in nodes_lyr.getSelectedFeatures():
         node_id = node[node_flds['id']]
+        node_list[node_id.split('-')[-1]] = node_id
         node_label = []
         node_label.append('<<b><table border="0" cellpadding="0" cellspacing="0">')
-        node_label.append('<tr><td align="left"><font color="red">{}F</font></td></tr>'.format(node[node_flds['splitters_1_8']]))
+        if node[node_flds['use']] != '7':
+            node_label.append('<tr><td align="left"><font color="red">{}F</font></td></tr>'.format(node[node_flds['splitters_1_8']]))
         node_label.append('<tr><td align="left">{}</td></tr>'.format(node_id))
         node_label.append('<tr><td align="left">{}x1:8 ({}P)</td></tr>'.format(node[node_flds['splitters_1_8']], node[node_flds['premises']]))
-        node_label.append('<tr><td align="left">{}</td></tr>'.format('</td></tr><tr><td align="left">'.join(wrap(node[node_flds['address']], width=25))))
+        node_label.append('<tr><td align="left">{}</td></tr>'.format('</td></tr><tr><td align="left">'.join(get_address_list(node[node_flds['address']], 25))))
         node_label.append('</table></b>>')
         with g.subgraph(name='cluster_{}'.format(node_id)) as c:
             c.attr(style='invis', nodesep='0.02')
-            if node[node_flds['use']] == 2:
+            if node[node_flds['use']] == "2":
                 c.node(node_id, label='UGSN', shape='square', width='1', height='1', fixedsize='shape')
-            elif node[node_flds['use']] == 5:
+            elif node[node_flds['use']] == "5":
                 c.node(node_id, label='UGCE', shape='square', width='1', height='1', fixedsize='shape')
-            elif node[node_flds['use']] == 6:
+            elif node[node_flds['use']] == "6":
                 c.node(node_id, label='MSN', shape='square', width='1', height='1', fixedsize='shape')
             else:
                 c.node(node_id, label='MCE', shape='square', width='1', height='1', fixedsize='shape')
@@ -113,16 +124,18 @@ def createSLD(iface, bdry_lyr):
     nodes_lyr.selectByExpression('\"{}\" in (3, 4)'.format(node_flds['use']), QgsVectorLayer.IntersectSelection)
     for node in nodes_lyr.getSelectedFeatures():
         node_id = node[node_flds['id']]
+        node_list[node_id.split('-')[-1]] = node_id
         node_label = []
         node_label.append('<<b><table border="0" cellpadding="0" cellspacing="0">')
-        node_label.append('<tr><td align="left"><font color="red">{}F</font></td></tr>'.format(node[node_flds['splitters_1_8']]))
+        if node[node_flds['use']] != "4":
+            node_label.append('<tr><td align="left"><font color="red">{}F</font></td></tr>'.format(node[node_flds['splitters_1_8']]))
         node_label.append('<tr><td align="left">{}</td></tr>'.format(node_id))
         node_label.append('<tr><td align="left">{}x1:8 ({}P)</td></tr>'.format(node[node_flds['splitters_1_8']], node[node_flds['premises']]))
-        node_label.append('<tr><td align="left">{}</td></tr>'.format('</td></tr><tr><td align="left">'.join(wrap(node[node_flds['address']], width=25))))
+        node_label.append('<tr><td align="left">{}</td></tr>'.format('</td></tr><tr><td align="left">'.join(get_address_list(node[node_flds['address']], 25))))
         node_label.append('</table></b>>')
         with g.subgraph(name='cluster_{}'.format(node_id)) as c:
             c.attr(style='invis', nodesep='0.02')
-            if node[node_flds['use']] == 3:
+            if node[node_flds['use']] == "3":
                 c.node(node_id, label='PMSN', shape='circle', width='1', height='1', fixedsize='shape')
             else:
                 c.node(node_id, label='PMCE', shape='circle', width='1', height='1', fixedsize='shape')
@@ -139,7 +152,7 @@ def createSLD(iface, bdry_lyr):
     for cable in cable_lyr.getSelectedFeatures():
         type_label = get_value_text(type_map, cable[cable_flds['type']])
         label = '{} Cable\n{}'.format(type_label, cable[cable_flds['label']])
-        nodes = get_node_ids(cable[cable_flds['name']])
+        nodes = get_node_ids(node_list, cable[cable_flds['name']])
         if len(nodes) == 2:
             g.edge(nodes[0], nodes[1], xlabel=label)
 
@@ -149,19 +162,51 @@ def createSLD(iface, bdry_lyr):
     for cable in cable_lyr.getSelectedFeatures(request):
         type_label = get_value_text(type_map, cable[cable_flds['type']])
         label = '{} ULW Cable\n{}'.format(type_label, cable[cable_flds['label']])
-        nodes = get_node_ids(cable[cable_flds['name']])
+        nodes = get_node_ids(node_list, cable[cable_flds['name']])
         if len(nodes) == 2:
             g.edge(nodes[0], nodes[1], xlabel=label)
 
     cable_lyr.removeSelection()
-    #try:
-    g.view(cleanup=True)
-    #except Exception as e:
-    #    print(type(e), e)
-    #    QMessageBox.critical(iface.mainWindow(), "Graphviz missing", "Graphviz executables must be installed and the settings > " + \
-    #                                             "graphvizBinPath set to the correct path in the prerequisites.")
+    try:
+        g.view(cleanup=True)
+    except Exception as e:
+        print(type(e), e)
+        QMessageBox.critical(iface.mainWindow(), "Graphviz Failure", "Graphviz failed to convert the file. " + \
+                                                "Please check the GraphViz executables are installed and " + \
+                                                "settings > graphvizBinPath set to the correct path in the prerequisites. " + \
+                                                "If this still fails please send QGIS project and shapefiles to the tool developers.")
 
-def get_node_ids(name):
+def get_address_list(address, wrap_len):
+    address_list = []
+
+    lst1 = address.split(',')
+    str_len = 0
+    address_str = ''
+    for val1 in lst1:
+        if '&' in val1:
+            val1 = val1.replace('&','&amp;')
+        temp_len = str_len + len(val1) + 2
+        if temp_len < wrap_len:
+            address_str = address_str + val1 + ', '
+            str_len += (len(val1) + 2)
+        else:
+            lst2 = val1.split(' ')
+            for val2 in lst2:
+                temp_len = str_len + len(val2) + 2
+                if temp_len < wrap_len:
+                    address_str = address_str + val2 + ' '
+                    str_len += (len(val2) + 1)
+                else:
+                    address_list.append(address_str)
+                    address_str = val2 + ' '
+                    str_len = len(address_str)
+            address_str = address_str[:-1] + ', '
+
+    address_list.append(address_str[:-2])
+
+    return address_list
+
+def get_node_ids(name_list, name):
     node_ids = []
     if name == NULL:
         return node_ids
@@ -174,18 +219,10 @@ def get_node_ids(name):
     node_ids.append(node_names[0])
 
     # Cable names are shortened to remove duplicate text, get name prefix for end node
-    start_split = node_names[0].split('-')
-    start_split.pop()
+    end_split = node_names[1].split('-')[-1]
 
-    end_split = node_names[1].split('-')
-
-    prefix = []
-    for word in start_split:
-        if word not in end_split:
-            prefix.append(word)
-
-    if len(prefix) > 0:
-        node_ids.append('{}-{}'.format('-'.join(prefix),node_names[1]))
+    if end_split in name_list:
+        node_ids.append(name_list[end_split])
     else:
         node_ids.append(node_names[1])
 

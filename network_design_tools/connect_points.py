@@ -1,7 +1,7 @@
 from PyQt5.QtCore import pyqtSignal, QObject
 from qgis.core import QgsProject, QgsVectorLayer, QgsPoint, QgsProcessingFeatureSourceDefinition, \
                       QgsFeatureRequest, QgsVectorLayerUtils, QgsGeometry, QgsSpatialIndex, NULL, \
-                      QgsRectangle
+                      QgsRectangle, QgsProcessingException, QgsPointXY
 from qgis.PyQt.QtWidgets import QMessageBox
 import processing
 from network_design_tools import common
@@ -51,10 +51,7 @@ def createNodeCable(iface, routingType, startPoint, startLayerName, startFid, en
 
     startId = startPt[startFields['id']]
     endIdSplit = endPt[endFields['id']].split('-')
-    endId = []
-    for word in endIdSplit:
-        if word not in startId:
-            endId.append(word)
+    endId = endIdSplit[-1]
 
     cableName = '{}/{}'.format(startId, '-'.join(endId))
 
@@ -95,7 +92,8 @@ def createNodeCable(iface, routingType, startPoint, startLayerName, startFid, en
     except Exception as e:
         print(e)
         QMessageBox.warning(iface.mainWindow(), 'Cable not created', \
-            'Cable from {}: {} to {}: {} could not be calculated'.format(startLayerName, startId, endLayerName, '-'.join(endIdSplit)))
+            'Cable from {}: {} to {}: {} could not be calculated. '.format(startLayerName, startId, endLayerName, '-'.join(endIdSplit)) + \
+            'Please check ducts are snapped and there are no invalid geometries in BT Duct / Duct layers.')
     finally:
         cable_lyr.rollBack()
         QgsProject.instance().removeMapLayer(merged_duct_lyr)
@@ -173,7 +171,12 @@ class DropCableBuilder(QObject):
 
         # Get the intersecting properties
         bdry_sel_lyr = QgsProcessingFeatureSourceDefinition(self.bdry_lyr.source(), selectedFeaturesOnly = True)
-        processing.run("qgis:selectbylocation", {'INPUT':self.cp_lyr, 'INTERSECT':bdry_sel_lyr, 'METHOD':0, 'PREDICATE':[6]}) # 6 = Within
+        try:
+            processing.run("qgis:selectbylocation", {'INPUT':self.cp_lyr, 'INTERSECT':bdry_sel_lyr, 'METHOD':0, 'PREDICATE':[6]}) # 6 = Within
+        except QgsProcessingException as e:
+            QMessageBox.critical(self.iface.mainWindow(),'Selection Failure', \
+                                'Failed to select Customer Premises. Please check geometries in Boundaries layer are valid.\nQGIS error: {}'.format(e), QMessageBox.Ok)
+            return
 
         if bdry_type in ('2', '3'): # UGSN / PMSN
             processing.run("qgis:selectbylocation", {'INPUT':self.bdry_lyr, 'INTERSECT':bdry_sel_lyr, 'METHOD':0, 'PREDICATE':[5, 6]}) # 5 = Overlaps
@@ -247,7 +250,7 @@ class DropCableBuilder(QObject):
             self.drop_cables_completed()
             return
 
-        end_point = self.insert_lead_in_duct(end_point, duct_lyr, match)
+        client_point = self.check_lead_in_duct(end_point, match)
         if end_point is not None:
             try:
                 result = processing.run("native:mergevectorlayers", { 'CRS' : duct_lyr.crs(), \
@@ -270,7 +273,13 @@ class DropCableBuilder(QObject):
 
                 for c in result['OUTPUT'].getFeatures():
                     feat = QgsVectorLayerUtils.createFeature(self.cable_lyr)
-                    feat.setGeometry(c.geometry())
+
+                    if client_point is not None:
+                        client_geom = c.geometry().asPolyline()
+                        client_geom.append(QgsPointXY(client_point))
+                        feat.setGeometry(QgsGeometry.fromPolylineXY(client_geom))
+                    else:
+                        feat.setGeometry(c.geometry())
                     feat.setAttribute(self.cable_fields['feed'], 1) # U/G
                     feat.setAttribute(self.cable_fields['use'], 1) # Access
                     feat.setAttribute(self.cable_fields['type'], 1) # 1F
@@ -281,8 +290,9 @@ class DropCableBuilder(QObject):
             except Exception as e:
                 print(e)
                 QMessageBox.warning(self.iface.mainWindow(), 'Cable not created', \
-                    'Cable from {} to UPRN {} could not be calculated'.format(self.node[self.layers['Node']['fields']['id']], \
-                        self.premises_list[self.premises_id][self.uprn_field]))
+                    'Cable from {} to UPRN {} could not be calculated. '.format(self.node[self.layers['Node']['fields']['id']], \
+                                                                                self.premises_list[self.premises_id][self.uprn_field]) + \
+                    'Please check nodes are snapped and there are no invalid geometries in BT Duct / Duct layers.')
             finally:
                 self.cable_lyr.rollBack()
                 QgsProject.instance().removeMapLayer(merged_duct_lyr)
@@ -294,7 +304,7 @@ class DropCableBuilder(QObject):
         self.premises_id = None
         self.next_ug_drop_cable()
 
-    def insert_lead_in_duct(self, end_point, duct_lyr, match):
+    def check_lead_in_duct(self, end_point, match):
         self.point_tool.canvasClickSnapped.disconnect(self.insert_ug_drop_cable)
         split_duct = True
         split_lyr = match.layer()
@@ -347,33 +357,19 @@ class DropCableBuilder(QObject):
                 split_lyr.rollBack()
 
         if bt_lead_in:
-            return end_point
+            return None
 
-        # Insert subscriber feed / client lead in
         premises_geom = self.premises_list[self.premises_id].geometry()
 
+        # Insert subscriber feed
         self.insert_subscriber_feed(end_point, premises_geom.asPoint())
 
+        # Calculate end of client cable where it meets building
         duct_pts = []
         duct_pts.append(QgsPoint(premises_geom.asPoint()))
 
         duct_pts.append(QgsPoint(end_point))
-        lead_in_geom = self.mp.clipGeometryByBuilding(premises_geom, self.node.geometry(), QgsGeometry.fromPolyline(duct_pts))
-
-        try:
-            duct_fields = self.layers['Duct']['fields']
-            duct_lyr.startEditing()
-            lead_in = QgsVectorLayerUtils.createFeature(duct_lyr)
-            lead_in.setGeometry(lead_in_geom)
-            lead_in.setAttribute(duct_fields['surface'], 'FW')
-            lead_in.setAttribute(duct_fields['material'], 3) # Tarmac
-            lead_in.setAttribute(duct_fields['7_3.5mm'], 1)
-            duct_lyr.addFeature(lead_in)
-            duct_lyr.commitChanges()
-        except Exception as e:
-            print(type(e), e)
-        finally:
-            duct_lyr.rollBack()
+        lead_in_geom = self.mp.clipGeometryByBuilding(premises_geom, QgsGeometry.fromPointXY(end_point), QgsGeometry.fromPolyline(duct_pts))
 
         vertices = list(lead_in_geom.vertices())
         return vertices[0]

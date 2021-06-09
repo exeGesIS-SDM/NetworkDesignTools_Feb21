@@ -23,13 +23,14 @@
 """
 import os
 import subprocess
+from math import ceil
 from functools import partial
-from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, QVariant
+from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction, QMessageBox, QToolButton, QMenu, QFileDialog
-from qgis.core import QgsProject, QgsVectorLayer, QgsField, QgsProcessingFeatureSourceDefinition, \
-                      QgsVectorLayerUtils, QgsGeometry, QgsPointXY, QgsVectorFileWriter, \
-                      Qgis, QgsCoordinateTransformContext, QgsFeatureRequest, NULL
+from qgis.core import QgsProject, QgsVectorLayer, QgsProcessingFeatureSourceDefinition, \
+                      QgsVectorLayerUtils, QgsVectorFileWriter, Qgis, QgsCoordinateTransformContext, \
+                      QgsFeatureRequest, QgsExpression, NULL, QgsProcessingException
 from qgis.utils import unloadPlugin
 import processing
 
@@ -39,8 +40,6 @@ from network_design_tools import common
 from .resources import *
 # Import the code for the point tool
 from .map_tools import SelectDCMapTool, ConnectNodesMapTool
-# Import the code for the dialog
-#from .property_count_dialog import PropertyCountDialog
 # Import the code to connect nodes
 from .connect_points import DropCableBuilder, createNodeCable
 from .update_attributes import updateNodeAttributes, updatePremisesAttributes
@@ -435,7 +434,12 @@ class NetworkDesignTools:
         PNLyr.dataProvider().addFeature(bdryFeat)
 
         # Get the LOC boundaries
-        processing.run("qgis:selectbylocation", {'INPUT':bdryLyr, 'INTERSECT':PNLyr, 'METHOD':0, 'PREDICATE':[0]})
+        try:
+            processing.run("qgis:selectbylocation", {'INPUT':bdryLyr, 'INTERSECT':PNLyr, 'METHOD':0, 'PREDICATE':[0]})
+        except QgsProcessingException as e:
+            QMessageBox.critical(self.iface.mainWindow(),'Selection Failure', \
+                                'Failed to select LOC boundaries. Please check geometries in Boundaries layer are valid.\nQGIS error: {}'.format(e), QMessageBox.Ok)
+            return
         bdryLyr.selectByExpression('\"Type\" = \'6\'', QgsVectorLayer.SelectBehavior.IntersectSelection)
 
         locLyr = QgsVectorLayer("Polygon?crs=EPSG:27700", "Temp_Boundary", "memory")
@@ -486,11 +490,16 @@ class NetworkDesignTools:
                     sumField = calc['SumField']
                 else:
                     sumField = None
-                
+
                 if 'GroupBy' in calc:
                     groupBy = calc['GroupBy']
                 else:
                     groupBy = ""
+
+                if 'Multiplier' in calc:
+                    multiplier = calc['Multiplier']
+                else:
+                    multiplier = None
 
                 if 'Criteria' not in calc: #straight count
                     searchLyr.selectAll()
@@ -519,6 +528,10 @@ class NetworkDesignTools:
                         total = 0
                         for f in searchLyr.selectedFeatures():
                             total += f.geometry().length()
+                        total = ceil(total)
+
+                    if multiplier is not None:
+                        total = total * multiplier
 
                     # Get records that intersect locLyr which is only the LOC polygons
                     processing.run("qgis:selectbylocation", {'INPUT':searchLyr, 'INTERSECT':locLyr, 'METHOD':0, 'PREDICATE':[0]})
@@ -535,6 +548,10 @@ class NetworkDesignTools:
                         inLoc = 0
                         for f in searchLyr.selectedFeatures():
                             inLoc += f.geometry().length()
+                        inLoc = ceil(inLoc)
+
+                    if multiplier is not None:
+                        inLoc = inLoc * multiplier
 
                     buildable = total - inLoc
 
@@ -579,9 +596,17 @@ class NetworkDesignTools:
                             elif summaryType == "Length":
                                 groups[group]['inLoc'] += f.geometry().length()
 
-                            groups[group]['buildable'] = groups[group]['total'] - groups[group]['inLoc']
-
                         for group, val in groups.items():
+                            if summaryType == "Length":
+                                val['total'] = ceil(val['total'])
+                                val['inLoc'] = ceil(val['inLoc'])
+
+                            if multiplier is not None:
+                                val['total'] = val['total'] * multiplier
+                                val['inLoc'] = val['inLoc'] * multiplier
+
+                            val['buildable'] = val['total'] - val['inLoc']
+
                             results.append({headers[0]:calcTitle, headers[1]: group, headers[-3]:val['buildable'], \
                                             headers[-2]: val['inLoc'], headers[-1]: val['total']})
                     else:
@@ -591,10 +616,15 @@ class NetworkDesignTools:
         ans = common.writeToCSV(self.iface, csvFileName, headers, results)
 
         if ans:
-            subprocess.run(['start', csvFileName], shell=True, check=True)
+            try:
+                subprocess.run('start excel.exe "{}"'.format(csvFileName), shell=True, check=True)
+            except:
+                self.iface.messageBar().pushSuccess("Bill of Quantities created", "Bill of Quantities saved to {}".format(csvFileName))
 
     def CreatePropertyCountLayer(self):
         layers = common.prerequisites['layers']
+        threshold = common.prerequisites['settings']['mduThreshold']
+
         bdryLyr, bdryFeat = self.getSelectedBoundary()
         if bdryLyr is None:
             return
@@ -608,44 +638,74 @@ class NetworkDesignTools:
         cpLyr = common.getLayerByName(self.iface, QgsProject.instance(), layers['Premises']['name'], True)
         if cpLyr is None:
             return
-        processing.run("qgis:selectbylocation", {'INPUT':cpLyr, 'INTERSECT':tempLyr, 'METHOD':0, 'PREDICATE':[0]})
+        try:
+            processing.run("qgis:selectbylocation", {'INPUT':cpLyr, 'INTERSECT':tempLyr, 'METHOD':0, 'PREDICATE':[0]})
+        except QgsProcessingException as e:
+            QMessageBox.critical(self.iface.mainWindow(),'Selection Failure', \
+                                'Failed to select Customer Premises. Please check selected geometry in Boundaries layer is valid.\nQGIS error: {}'.format(e), QMessageBox.Ok)
+            return
 
         topoAreaLyr = common.getLayerByName(self.iface, QgsProject.instance(), layers['TopoArea']['name'], True)
         if topoAreaLyr is None:
             return
 
-        cpSelLyr = QgsProcessingFeatureSourceDefinition(cpLyr.source(), selectedOnly=True)
-        processing.run("qgis:selectbylocation", {'INPUT':topoAreaLyr, 'INTERSECT':cpSelLyr, 'METHOD':0, 'PREDICATE':[1]}) # 1 = Contains
+        cpSelLyr = QgsProcessingFeatureSourceDefinition(cpLyr.source(), selectedFeaturesOnly=True)
+        try:
+            processing.run("qgis:selectbylocation", {'INPUT':topoAreaLyr, 'INTERSECT':cpSelLyr, 'METHOD':0, 'PREDICATE':[1]}) # 1 = Contains
+        except QgsProcessingException as e:
+            QMessageBox.critical(self.iface.mainWindow(),'Selection Failure', \
+                                'Failed to select TopoArea. Please check geometries in TopoArea layer are valid.\nQGIS error: {}'.format(e), QMessageBox.Ok)
+            return
 
-        topoAreaSelLyr = QgsProcessingFeatureSourceDefinition(topoAreaLyr.source(), selectedOnly=True)
+        topoAreaSelLyr = QgsProcessingFeatureSourceDefinition(topoAreaLyr.source(), selectedFeaturesOnly=True)
 
-        
         propCountColName = layers['PropertyCount']['fields']['Count']
         result = processing.run("qgis:countpointsinpolygon", {'CLASSFIELD' : None, 'FIELD' : propCountColName, 'OUTPUT' : 'TEMPORARY_OUTPUT', \
                                 'POINTS' : cpSelLyr, 'POLYGONS' : topoAreaSelLyr, 'WEIGHT' : None })
-        
-        pcLayerName = layers['PropertyCount']['name']       
 
+        pcLayerName = layers['PropertyCount']['name']
         pcLyr = common.getLayerByName(self.iface, QgsProject.instance(), pcLayerName, True)
         if pcLyr is None:
             return
 
+        bdry_flds = layers['Boundaries']['fields']
+        request = QgsFeatureRequest(QgsExpression('\"Type\" = \'7\''))
+
         featCount = 0
         pcLyr.startEditing()
+        bdryLyr.startEditing()
         try:
             # Delete all existing features
             idList = [feat.id() for feat in pcLyr.getFeatures()]
             pcLyr.deleteFeatures(idList)
 
             for feat in result['OUTPUT'].getFeatures():
+                centroid = feat.geometry().centroid()
                 pc = QgsVectorLayerUtils.createFeature(pcLyr)
-                pc.setGeometry(feat.geometry().centroid())
+                pc.setGeometry(centroid)
                 pc.setAttribute(propCountColName, feat[propCountColName])
                 pcLyr.addFeature(pc)
                 featCount += 1
+
+                if feat[propCountColName] >= threshold:
+                    # Check if MDU boundary exists
+                    create_mdu = True
+                    for mdu in bdryLyr.getFeatures(request):
+                        if mdu.geometry().contains(centroid):
+                            create_mdu = False
+                            break
+
+                    if create_mdu:
+                        mdu = QgsVectorLayerUtils.createFeature(bdryLyr)
+                        mdu.setGeometry(feat.geometry())
+                        mdu.setAttribute(bdry_flds['type'], 7)
+                        mdu.setAttribute(bdry_flds['premises'], feat[propCountColName])
+                        bdryLyr.addFeature(mdu)
         except Exception as e:
             print(e)
 
+        bdryLyr.commitChanges()
+        bdryLyr.rollBack()
         pcLyr.commitChanges()
         pcLyr.rollBack()
 
@@ -672,7 +732,12 @@ class NetworkDesignTools:
         if cpLyr is None:
             return
 
-        processing.run("qgis:selectbylocation", {'INPUT':cpLyr, 'INTERSECT':tempLyr, 'METHOD':0, 'PREDICATE':[0]})
+        try:
+            processing.run("qgis:selectbylocation", {'INPUT':cpLyr, 'INTERSECT':tempLyr, 'METHOD':0, 'PREDICATE':[0]})
+        except QgsProcessingException as e:
+            QMessageBox.critical(self.iface.mainWindow(),'Selection Failure', \
+                                'Failed to select Customer Premises. Please check {} geometries are valid.\nQGIS error: {}'.format(bdryLyr.name(), e), QMessageBox.Ok)
+            return
 
         QMessageBox.information(self.iface.mainWindow(),'Network Design Toolkit', \
             str(cpLyr.selectedFeatureCount()) +' properties in this area.', QMessageBox.Ok)
@@ -714,7 +779,12 @@ class NetworkDesignTools:
         cpLyr = common.getLayerByName(self.iface, QgsProject.instance(), cpLyrName, True)
 
         bdrySelLyr = QgsProcessingFeatureSourceDefinition(bdryLyr.source(), selectedFeaturesOnly = True)
-        processing.run("qgis:selectbylocation", { 'INPUT' : cpLyr, 'INTERSECT' : bdrySelLyr, 'METHOD' : 0, 'PREDICATE' : [6] })
+        try:
+            processing.run("qgis:selectbylocation", { 'INPUT' : cpLyr, 'INTERSECT' : bdrySelLyr, 'METHOD' : 0, 'PREDICATE' : [6] })
+        except QgsProcessingException as e:
+            QMessageBox.critical(self.iface.mainWindow(),'Selection Failure', \
+                                'Failed to select Customer Premises. Please check geometries in Boundaries layer are valid.\nQGIS error: {}'.format(e), QMessageBox.Ok)
+            return
         bdryLyr.removeSelection()
 
         if cpLyr.selectedFeatureCount() == 0:
@@ -743,7 +813,10 @@ class NetworkDesignTools:
             errorCode, errorMsg = QgsVectorFileWriter.writeAsVectorFormat(cpLyr, csvFileName, "utf-8", None, "CSV", onlySelected=True, attributes=attributeList)
 
         if errorCode == QgsVectorFileWriter.NoError:
-            subprocess.run(['start', csvFileName], shell=True, check=True)
+            try:
+                subprocess.run('start excel.exe "{}"'.format(csvFileName), check=True)
+            except:
+                self.iface.messageBar().pushSuccess("Bill of Quantities created", "Bill of Quantities saved to {}".format(csvFileName))
         else:
             QMessageBox.critical(self.iface.mainWindow(),'Network Design Toolkit', 'Failed to create release sheet.\n{}: {}'.format(errorCode, errorMsg))
 
