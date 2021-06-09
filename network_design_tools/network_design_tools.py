@@ -42,7 +42,7 @@ from .resources import *
 from .map_tools import SelectDCMapTool, ConnectNodesMapTool
 # Import the code to connect nodes
 from .connect_points import DropCableBuilder, createNodeCable
-from .update_attributes import updateNodeAttributes, updatePremisesAttributes
+from .update_attributes import updateCableCounts, updateNodeAttributes, updatePremisesAttributes
 from .sld_export import createSLD
 
 class NetworkDesignTools:
@@ -209,13 +209,6 @@ class NetworkDesignTools:
 
         self.add_action(
             icon_path,
-            text=self.tr(u'Network Design Tools'),
-            add_to_toolbar=False,
-            callback=self.run,
-            parent=self.iface.mainWindow())
-
-        self.add_action(
-            icon_path,
             text=self.tr(u'Close Toolkit'),
             add_to_toolbar=False,
             callback=self.closePlugin,
@@ -236,6 +229,8 @@ class NetworkDesignTools:
             location='Custom',
             callback=self.CreatePropertyCountLayer,
             parent=self.iface.mainWindow())
+
+        self.toolbar.addSeparator()
 
         self.cableToolButton = QToolButton()
         self.cableToolButton.setMenu(QMenu())
@@ -267,6 +262,16 @@ class NetworkDesignTools:
             callback=self.linkDC,
             parent=self.iface.mainWindow())
         self.linkDCBtn.setCheckable(True)
+
+        self.add_action(
+            os.path.join(icons_folder,'cable_count.png'),
+            text=self.tr(u'Populate the cable count labels layer'),
+            add_to_menu=False,
+            location='Custom',
+            callback=self.CreateCableCountLabels,
+            parent=self.iface.mainWindow())
+
+        self.toolbar.addSeparator()
 
         self.add_action(
             os.path.join(icons_folder,'houses_update.png'),
@@ -321,9 +326,6 @@ class NetworkDesignTools:
 
         self.cableBuilder.cablesCompleted.connect(self.finishedDCObject)
 
-        # will be set False in run()
-        self.first_start = True
-
     def closePlugin(self):
         unloadPlugin('network_design_tools')
 
@@ -347,13 +349,6 @@ class NetworkDesignTools:
 
         # remove the custom toolbar
         del self.toolbar
-
-    def run(self):
-        """Run method that performs all the real work"""
-
-        if self.first_start:
-            self.first_start = False
-
 
     def selectDCObject(self, nodeId, bdryId):
         '''
@@ -620,6 +615,9 @@ class NetworkDesignTools:
                 subprocess.run('start excel.exe "{}"'.format(csvFileName), shell=True, check=True)
             except:
                 self.iface.messageBar().pushSuccess("Bill of Quantities created", "Bill of Quantities saved to {}".format(csvFileName))
+
+    def CreateCableCountLabels(self):
+        updateCableCounts(self.iface)
 
     def CreatePropertyCountLayer(self):
         layers = common.prerequisites['layers']

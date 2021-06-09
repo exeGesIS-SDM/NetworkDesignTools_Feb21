@@ -1,10 +1,181 @@
 from math import ceil
 from qgis.core import QgsProject, QgsVectorLayer, QgsSpatialIndex, QgsPoint, NULL, \
                       QgsFeatureRequest, QgsRectangle, QgsVectorLayerUtils, \
-                      QgsGeometry
+                      QgsGeometry, QgsExpression
 from PyQt5.QtWidgets import QMessageBox
 import processing
 from network_design_tools import common
+
+def updateCableCounts(iface):
+    """ For each duct:
+        - get the middle node or centre of line if 2 vertices
+        - count the number of cables at that location
+        - insert into cable count layer
+    """
+
+    layers = common.prerequisites['layers']
+
+    bt_duct_lyr = common.getLayerByName(iface, QgsProject.instance(), layers['BTDuct']['name'], True)
+    if bt_duct_lyr is None:
+        return
+
+    duct_lyr = common.getLayerByName(iface, QgsProject.instance(), layers['Duct']['name'], True)
+    if duct_lyr is None:
+        return
+
+    cable_lyr = common.getLayerByName(iface, QgsProject.instance(), layers['Cable']['name'], True)
+    if cable_lyr is None:
+        return
+    cable_fields = layers['Cable']['fields']
+
+    count_lyr = common.getLayerByName(iface, QgsProject.instance(), layers['CableCount']['name'], True)
+    if count_lyr is None:
+        return
+    count_fields = layers['CableCount']['fields']
+
+    count_lyr.startEditing()
+    # Delete all existing cable counts
+    id_list = [feat.id() for feat in count_lyr.getFeatures()]
+    count_lyr.deleteFeatures(id_list)
+
+    request = QgsFeatureRequest()
+    bt_duct_lyr.startEditing()
+    for duct in bt_duct_lyr.getFeatures():
+        geom = duct.geometry()
+        # Get central nodes
+        vertices = list(geom.vertices())
+        if len(vertices) < 2:
+            continue
+
+        mid = (len(vertices) // 2) - 1
+        rem = len(vertices) % 2
+        v1 = vertices[mid]
+        v2 = vertices[mid + 1]
+
+        if rem == 0:
+            pt = QgsPoint((v1.x() + v2.x())/2, (v1.y() + v2.y())/2)
+        else:
+            pt = vertices[mid]
+        azimuth = v1.azimuth(v2)
+
+        aoi = QgsRectangle(pt.x()-0.1, pt.y()-0.1, pt.x()+0.1, pt.y()+0.1)
+        request.setFilterRect(aoi)
+        counts = {'1': 0, '2': 0, '3': 0}
+        for cable in cable_lyr.getFeatures(request):
+            if cable[cable_fields['feed']] == "1":
+                cable_use = cable[cable_fields['use']]
+                counts[cable_use] += 1
+
+        label_count = 0
+        for cable_type, count in counts.items():
+            if count > 0:
+                label_count += 1
+                label = QgsVectorLayerUtils.createFeature(count_lyr)
+                #TODO: Offset if count > 1
+                if duct.geometry().length() > 5:
+                    pt_b = pt.project(5, azimuth)
+                    label.setGeometry(QgsGeometry.fromPolyline([pt, pt_b]))
+                else:
+                    label.setGeometry(duct.geometry())
+                label.setAttribute(count_fields['feed'], 1) # UG
+                label.setAttribute(count_fields['type'], int(cable_type))
+                label.setAttribute(count_fields['count'], count)
+                count_lyr.addFeature(label)
+
+    for duct in duct_lyr.getFeatures():
+        geom = duct.geometry()
+        # Get central nodes
+        vertices = list(geom.vertices())
+        if len(vertices) < 2:
+            continue
+
+        mid = (len(vertices) // 2) - 1
+        rem = len(vertices) % 2
+        v1 = vertices[mid]
+        v2 = vertices[mid + 1]
+
+        if rem == 0:
+            pt = QgsPoint((v1.x() + v2.x())/2, (v1.y() + v2.y())/2)
+        else:
+            pt = vertices[mid]
+        azimuth = v1.azimuth(v2)
+
+        aoi = QgsRectangle(pt.x()-0.1, pt.y()-0.1, pt.x()+0.1, pt.y()+0.1)
+        request.setFilterRect(aoi)
+        counts = {'1': 0, '2': 0, '3': 0}
+        for cable in cable_lyr.getFeatures(request):
+            if cable[cable_fields['feed']] == 1:
+                cable_use = cable[cable_fields['use']]
+                counts[cable_use] += 1
+
+        label_count = 0
+        for cable_type, count in counts.items():
+            if count > 0:
+                label_count += 1
+                label = QgsVectorLayerUtils.createFeature(count_lyr)
+                #TODO: Offset if count > 1
+                if duct.geometry().length() > 5:
+                    pt_b = pt.project(5, azimuth)
+                    label.setGeometry(QgsGeometry.fromPolyline([pt, pt_b]))
+                else:
+                    label.setGeometry(duct.geometry())
+                label.setAttribute(count_fields['feed'], 1) # UG
+                label.setAttribute(count_fields['type'], int(cable_type))
+                label.setAttribute(count_fields['count'], count)
+                count_lyr.addFeature(label)
+
+    unique_cables = []
+    for cable in cable_lyr.getFeatures():
+        if cable[cable_fields['feed']] == "2":
+            is_unique = True
+            for cab in unique_cables:
+                if cab['geometry'].isGeosEqual(cable.geometry()):
+                    cable_use = cable[cable_fields['use']]
+                    cab['counts'][cable_use] += 1
+                    is_unique = False
+                    break
+
+            if is_unique:
+                counts = {'1': 0, '2': 0, '3': 0}
+                cable_use = cable[cable_fields['use']]
+                counts[cable_use] += 1
+                unique_cables.append({'geometry': cable.geometry(), 'counts': counts})
+
+    print(unique_cables)
+    for cable in unique_cables:
+        geom = cable['geometry']
+        vertices = list(geom.vertices())
+        if len(vertices) < 2:
+            continue
+
+        mid = (len(vertices) // 2) - 1
+        rem = len(vertices) % 2
+        v1 = vertices[mid]
+        v2 = vertices[mid + 1]
+
+        if rem == 0:
+            pt = QgsPoint((v1.x() + v2.x())/2, (v1.y() + v2.y())/2)
+        else:
+            pt = vertices[mid]
+        azimuth = v1.azimuth(v2)
+
+        label_count = 0
+        for cable_type, count in cable['counts'].items():
+            if count > 0:
+                label_count += 1
+                label = QgsVectorLayerUtils.createFeature(count_lyr)
+                #TODO: Offset if count > 1
+                if cable['geometry'].length() > 5:
+                    pt_b = pt.project(5, azimuth)
+                    label.setGeometry(QgsGeometry.fromPolyline([pt, pt_b]))
+                else:
+                    label.setGeometry(geom)
+                label.setAttribute(count_fields['feed'], 1) # UG
+                label.setAttribute(count_fields['type'], int(cable_type))
+                label.setAttribute(count_fields['count'], count)
+                count_lyr.addFeature(label)
+    count_lyr.commitChanges()
+    count_lyr.rollBack()
 
 def updateNodeAttributes(iface):
     """ For each node:

@@ -71,6 +71,19 @@
                 "uprn" : "UPRN"
             }
         },
+        "CableCount": {
+            "name": "Cable count labels",
+            "source": "./Shapefiles/Cable count.shp",
+            "fields": {
+                "id": "id",
+                "feed": "Feed",
+                "type": "Type",
+                "count": "Count",
+                "labX": "lab_x",
+                "labY": "lab_y",
+                "labRotation": "lab_rot"
+            }
+        },
         "Chamber": {
             "name": "Chambers",
             "source": "./Shapefiles/Chamber.shp",
@@ -95,7 +108,10 @@
             "source": "./Shapefiles/BT Duct.shp",
             "fields": {
                 "plantItem": "PLANT_ITEM",
-                "leadSpine": "Lead_Spine"
+                "leadSpine": "Lead_Spine",
+                "count25mm": "25mm_count",
+                "count12mm": "12mm_count",
+                "count7mm": "7mm_count"
             }
         },
         "Duct": {
