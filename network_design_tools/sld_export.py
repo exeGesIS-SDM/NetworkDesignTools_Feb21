@@ -102,18 +102,19 @@ def createSLD(iface, bdry_lyr):
         node_list[node_id.split('-')[-1]] = node_id
         node_label = []
         node_label.append('<<b><table border="0" cellpadding="0" cellspacing="0">')
-        node_label.append('<tr><td align="left"><font color="red">{}F</font></td></tr>'.format(node[node_flds['splitters_1_8']]))
+        if node[node_flds['use']] != '7':
+            node_label.append('<tr><td align="left"><font color="red">{}F</font></td></tr>'.format(node[node_flds['splitters_1_8']]))
         node_label.append('<tr><td align="left">{}</td></tr>'.format(node_id))
         node_label.append('<tr><td align="left">{}x1:8 ({}P)</td></tr>'.format(node[node_flds['splitters_1_8']], node[node_flds['premises']]))
         node_label.append('<tr><td align="left">{}</td></tr>'.format('</td></tr><tr><td align="left">'.join(get_address_list(node[node_flds['address']], 25))))
         node_label.append('</table></b>>')
         with g.subgraph(name='cluster_{}'.format(node_id)) as c:
             c.attr(style='invis', nodesep='0.02')
-            if node[node_flds['use']] == 2:
+            if node[node_flds['use']] == "2":
                 c.node(node_id, label='UGSN', shape='square', width='1', height='1', fixedsize='shape')
-            elif node[node_flds['use']] == 5:
+            elif node[node_flds['use']] == "5":
                 c.node(node_id, label='UGCE', shape='square', width='1', height='1', fixedsize='shape')
-            elif node[node_flds['use']] == 6:
+            elif node[node_flds['use']] == "6":
                 c.node(node_id, label='MSN', shape='square', width='1', height='1', fixedsize='shape')
             else:
                 c.node(node_id, label='MCE', shape='square', width='1', height='1', fixedsize='shape')
@@ -126,14 +127,15 @@ def createSLD(iface, bdry_lyr):
         node_list[node_id.split('-')[-1]] = node_id
         node_label = []
         node_label.append('<<b><table border="0" cellpadding="0" cellspacing="0">')
-        node_label.append('<tr><td align="left"><font color="red">{}F</font></td></tr>'.format(node[node_flds['splitters_1_8']]))
+        if node[node_flds['use']] != "4":
+            node_label.append('<tr><td align="left"><font color="red">{}F</font></td></tr>'.format(node[node_flds['splitters_1_8']]))
         node_label.append('<tr><td align="left">{}</td></tr>'.format(node_id))
         node_label.append('<tr><td align="left">{}x1:8 ({}P)</td></tr>'.format(node[node_flds['splitters_1_8']], node[node_flds['premises']]))
         node_label.append('<tr><td align="left">{}</td></tr>'.format('</td></tr><tr><td align="left">'.join(get_address_list(node[node_flds['address']], 25))))
         node_label.append('</table></b>>')
         with g.subgraph(name='cluster_{}'.format(node_id)) as c:
             c.attr(style='invis', nodesep='0.02')
-            if node[node_flds['use']] == 3:
+            if node[node_flds['use']] == "3":
                 c.node(node_id, label='PMSN', shape='circle', width='1', height='1', fixedsize='shape')
             else:
                 c.node(node_id, label='PMCE', shape='circle', width='1', height='1', fixedsize='shape')
@@ -165,12 +167,14 @@ def createSLD(iface, bdry_lyr):
             g.edge(nodes[0], nodes[1], xlabel=label)
 
     cable_lyr.removeSelection()
-    #try:
-    g.view(cleanup=True)
-    #except Exception as e:
-        #print(type(e), e)
-        #QMessageBox.critical(iface.mainWindow(), "Graphviz missing", "Graphviz executables must be installed and the settings > " + \
-        #                                        "graphvizBinPath set to the correct path in the prerequisites.")
+    try:
+        g.view(cleanup=True)
+    except Exception as e:
+        print(type(e), e)
+        QMessageBox.critical(iface.mainWindow(), "Graphviz Failure", "Graphviz failed to convert the file. " + \
+                                                "Please check the GraphViz executables are installed and " + \
+                                                "settings > graphvizBinPath set to the correct path in the prerequisites. " + \
+                                                "If this still fails please send QGIS project and shapefiles to the tool developers.")
 
 def get_address_list(address, wrap_len):
     address_list = []
@@ -188,7 +192,7 @@ def get_address_list(address, wrap_len):
         else:
             lst2 = val1.split(' ')
             for val2 in lst2:
-                temp_len = str_len + len(val1) + 2
+                temp_len = str_len + len(val2) + 2
                 if temp_len < wrap_len:
                     address_str = address_str + val2 + ' '
                     str_len += (len(val2) + 1)
