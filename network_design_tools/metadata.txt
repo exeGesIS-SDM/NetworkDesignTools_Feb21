@@ -6,7 +6,7 @@
 name=Network Design Tools
 qgisMinimumVersion=3.10
 description=Network Design Tools
-version=0.3.9
+version=0.4.0
 author=ESDM
 email=paulm@esdm.co.uk
 
