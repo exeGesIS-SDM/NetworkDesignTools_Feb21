@@ -327,7 +327,7 @@
                         "Calculation0":{"Criteria": "Lead_Spine = 'Spine'",  "Title": "Facility in spine duct" },
                         "Calculation1":{"Criteria": "Lead_Spine = 'Lead in'",  "Title": "Facility in lead in duct" }
                     },
-                    "SummaryType": "Count"  
+                    "SummaryType": "Length"  
                 },
 
                 "Stat7": {
@@ -344,19 +344,23 @@
                     "Title": "New Civils",
                     "Layer": "Duct",
                     "Calculations": {
-                        "Calculation0":{"Criteria": "\"7/3.5mm\" IS NOT NULL AND Surface = 'Verge'",  "Title": "Narrow trench in verge" },
-                        "Calculation1":{"Criteria": "\"7/3.5mm\" IS NOT NULL AND Surface = 'FW' AND Material = 2",  "Title": "Narrow trench in FW- Unmade" },
-                        "Calculation2":{"Criteria": "\"7/3.5mm\" IS NOT NULL AND Surface = 'FW' AND Material = 3",  "Title": "Narrow trench in FW- Tarmac" },
-                        "Calculation3":{"Criteria": "\"7/3.5mm\" IS NOT NULL AND Surface = 'FW' AND Material = 4",  "Title": "Narrow trench in FW- Concrete" },
-                        "Calculation4":{"Criteria": "\"7/3.5mm\" IS NOT NULL AND Surface = 'FW' AND Material = 5",  "Title": "Narrow trench in FW- Modular" },
-                        "Calculation5":{"Criteria": "\"7/3.5mm\" IS NOT NULL AND Surface = 'CW' AND Material = 2",  "Title": "Narrow trench in CW- Unmade" }, 
-                        "Calculation6":{"Criteria": "\"7/3.5mm\" IS NOT NULL AND Surface = 'CW' AND Material = 3",  "Title": "Narrow trench in CW- Tarmac" },
-                        "Calculation7":{"Criteria": "\"7/3.5mm\" IS NOT NULL AND Surface = 'CW' AND Material = 4",  "Title": "Narrow trench in CW- Concrete" },
-                        "Calculation8":{"Criteria": "\"7/3.5mm\" IS NOT NULL AND Surface = 'CW' AND Material = 5",  "Title": "Narrow trench in CW- Modular" }, 
-                        "Calculation9":{"Criteria": "\"110mm\" IS NOT NULL AND Surface = 'CW' AND Material = 2",  "Title": "Traditional trench in CW- Unmade" },
-                        "Calculation10":{"Criteria": "\"110mm\" IS NOT NULL AND Surface = 'CW' AND Material = 3",  "Title": "Traditional trench in CW- Tarmac" },
-                        "Calculation11":{"Criteria": "\"110mm\" IS NOT NULL AND Surface = 'CW' AND Material = 4",  "Title": "Traditional trench in CW- Concrete" }, 
-                        "Calculation12":{"Criteria": "\"110mm\" IS NOT NULL AND Surface = 'CW' AND Material = 5",  "Title": "Traditional trench in CW- Modular" }
+                        "Calculation0":{"Criteria": "\"110mm\" IS NULL AND Surface = 'Verge'",  "Title": "Narrow trench in verge" },
+                        "Calculation1":{"Criteria": "\"110mm\" IS NULL AND Surface = 'FW' AND Material = 2",  "Title": "Narrow trench in FW- Unmade" },
+                        "Calculation2":{"Criteria": "\"110mm\" IS NULL AND Surface = 'FW' AND Material = 3",  "Title": "Narrow trench in FW- Tarmac" },
+                        "Calculation3":{"Criteria": "\"110mm\" IS NULL AND Surface = 'FW' AND Material = 4",  "Title": "Narrow trench in FW- Concrete" },
+                        "Calculation4":{"Criteria": "\"110mm\" IS NULL AND Surface = 'FW' AND Material = 5",  "Title": "Narrow trench in FW- Modular" },
+                        "Calculation5":{"Criteria": "\"110mm\" IS NULL AND Surface = 'CW' AND Material = 2",  "Title": "Narrow trench in CW- Unmade" }, 
+                        "Calculation6":{"Criteria": "\"110mm\" IS NULL AND Surface = 'CW' AND Material = 3",  "Title": "Narrow trench in CW- Tarmac" },
+                        "Calculation7":{"Criteria": "\"110mm\" IS NULL AND Surface = 'CW' AND Material = 4",  "Title": "Narrow trench in CW- Concrete" },
+                        "Calculation8":{"Criteria": "\"110mm\" IS NULL AND Surface = 'CW' AND Material = 5",  "Title": "Narrow trench in CW- Modular" }, 
+                        "Calculation9":{"Criteria": "\"110mm\" IS NOT NULL AND Surface = 'FW' AND Material = 2",  "Title": "Traditional trench in FW- Unmade" },
+                        "Calculation10":{"Criteria": "\"110mm\" IS NOT NULL AND Surface = 'FW' AND Material = 3",  "Title": "Traditional trench in FW- Tarmac" },
+                        "Calculation11":{"Criteria": "\"110mm\" IS NOT NULL AND Surface = 'FW' AND Material = 4",  "Title": "Traditional trench in FW- Concrete" },
+                        "Calculation12":{"Criteria": "\"110mm\" IS NOT NULL AND Surface = 'FW' AND Material = 5",  "Title": "Traditional trench in FW- Modular" },
+                        "Calculation13":{"Criteria": "\"110mm\" IS NOT NULL AND Surface = 'CW' AND Material = 2",  "Title": "Traditional trench in CW- Unmade" },
+                        "Calculation14":{"Criteria": "\"110mm\" IS NOT NULL AND Surface = 'CW' AND Material = 3",  "Title": "Traditional trench in CW- Tarmac" },
+                        "Calculation15":{"Criteria": "\"110mm\" IS NOT NULL AND Surface = 'CW' AND Material = 4",  "Title": "Traditional trench in CW- Concrete" }, 
+                        "Calculation16":{"Criteria": "\"110mm\" IS NOT NULL AND Surface = 'CW' AND Material = 5",  "Title": "Traditional trench in CW- Modular" }
                     },
                     "SummaryType": "Length"
                 },
