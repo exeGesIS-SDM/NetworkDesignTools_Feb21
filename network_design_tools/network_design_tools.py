@@ -30,7 +30,7 @@ from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction, QMessageBox, QToolButton, QMenu, QFileDialog
 from qgis.core import QgsProject, QgsVectorLayer, QgsProcessingFeatureSourceDefinition, \
                       QgsVectorLayerUtils, QgsVectorFileWriter, Qgis, QgsCoordinateTransformContext, \
-                      QgsFeatureRequest, NULL, QgsProcessingException
+                      QgsFeatureRequest, QgsExpression, NULL, QgsProcessingException
 from qgis.utils import unloadPlugin
 import processing
 
@@ -40,8 +40,6 @@ from network_design_tools import common
 from .resources import *
 # Import the code for the point tool
 from .map_tools import SelectDCMapTool, ConnectNodesMapTool
-# Import the code for the dialog
-#from .property_count_dialog import PropertyCountDialog
 # Import the code to connect nodes
 from .connect_points import DropCableBuilder, createNodeCable
 from .update_attributes import updateNodeAttributes, updatePremisesAttributes
@@ -625,6 +623,8 @@ class NetworkDesignTools:
 
     def CreatePropertyCountLayer(self):
         layers = common.prerequisites['layers']
+        threshold = common.prerequisites['settings']['mduThreshold']
+
         bdryLyr, bdryFeat = self.getSelectedBoundary()
         if bdryLyr is None:
             return
@@ -642,7 +642,7 @@ class NetworkDesignTools:
             processing.run("qgis:selectbylocation", {'INPUT':cpLyr, 'INTERSECT':tempLyr, 'METHOD':0, 'PREDICATE':[0]})
         except QgsProcessingException as e:
             QMessageBox.critical(self.iface.mainWindow(),'Selection Failure', \
-                                'Failed to select Customer Premises. Please check geometries in Boundaries layer are valid.\nQGIS error: {}'.format(e), QMessageBox.Ok)
+                                'Failed to select Customer Premises. Please check selected geometry in Boundaries layer is valid.\nQGIS error: {}'.format(e), QMessageBox.Ok)
             return
 
         topoAreaLyr = common.getLayerByName(self.iface, QgsProject.instance(), layers['TopoArea']['name'], True)
@@ -650,7 +650,12 @@ class NetworkDesignTools:
             return
 
         cpSelLyr = QgsProcessingFeatureSourceDefinition(cpLyr.source(), selectedFeaturesOnly=True)
-        processing.run("qgis:selectbylocation", {'INPUT':topoAreaLyr, 'INTERSECT':cpSelLyr, 'METHOD':0, 'PREDICATE':[1]}) # 1 = Contains
+        try:
+            processing.run("qgis:selectbylocation", {'INPUT':topoAreaLyr, 'INTERSECT':cpSelLyr, 'METHOD':0, 'PREDICATE':[1]}) # 1 = Contains
+        except QgsProcessingException as e:
+            QMessageBox.critical(self.iface.mainWindow(),'Selection Failure', \
+                                'Failed to select TopoArea. Please check geometries in TopoArea layer are valid.\nQGIS error: {}'.format(e), QMessageBox.Ok)
+            return
 
         topoAreaSelLyr = QgsProcessingFeatureSourceDefinition(topoAreaLyr.source(), selectedFeaturesOnly=True)
 
@@ -659,27 +664,48 @@ class NetworkDesignTools:
                                 'POINTS' : cpSelLyr, 'POLYGONS' : topoAreaSelLyr, 'WEIGHT' : None })
 
         pcLayerName = layers['PropertyCount']['name']
-
         pcLyr = common.getLayerByName(self.iface, QgsProject.instance(), pcLayerName, True)
         if pcLyr is None:
             return
 
+        bdry_flds = layers['Boundaries']['fields']
+        request = QgsFeatureRequest(QgsExpression('\"Type\" = \'7\''))
+
         featCount = 0
         pcLyr.startEditing()
+        bdryLyr.startEditing()
         try:
             # Delete all existing features
             idList = [feat.id() for feat in pcLyr.getFeatures()]
             pcLyr.deleteFeatures(idList)
 
             for feat in result['OUTPUT'].getFeatures():
+                centroid = feat.geometry().centroid()
                 pc = QgsVectorLayerUtils.createFeature(pcLyr)
-                pc.setGeometry(feat.geometry().centroid())
+                pc.setGeometry(centroid)
                 pc.setAttribute(propCountColName, feat[propCountColName])
                 pcLyr.addFeature(pc)
                 featCount += 1
+
+                if feat[propCountColName] >= threshold:
+                    # Check if MDU boundary exists
+                    create_mdu = True
+                    for mdu in bdryLyr.getFeatures(request):
+                        if mdu.geometry().contains(centroid):
+                            create_mdu = False
+                            break
+
+                    if create_mdu:
+                        mdu = QgsVectorLayerUtils.createFeature(bdryLyr)
+                        mdu.setGeometry(feat.geometry())
+                        mdu.setAttribute(bdry_flds['type'], 7)
+                        mdu.setAttribute(bdry_flds['premises'], feat[propCountColName])
+                        bdryLyr.addFeature(mdu)
         except Exception as e:
             print(e)
 
+        bdryLyr.commitChanges()
+        bdryLyr.rollBack()
         pcLyr.commitChanges()
         pcLyr.rollBack()
 
