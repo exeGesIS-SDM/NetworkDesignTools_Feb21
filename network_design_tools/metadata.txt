@@ -6,9 +6,9 @@
 name=Network Design Tools
 qgisMinimumVersion=3.10
 description=Network Design Tools
-version=0.4.0
+version=0.4.1
 author=ESDM
-email=paulm@esdm.co.uk
+email=clairel@esdm.co.uk
 
 about=This plugin was created to automate tasks associated with designing new fibre delivery networks.
 
@@ -20,7 +20,12 @@ repository=http://repo
 
 hasProcessingProvider=no
 # Uncomment the following line and add your changelog:
-# changelog=0.3
+# changelog=0.4
+    - Altered labelling on cable builder
+    - Altered cable name interpretation on SLD export
+    - Added cable count layer tool
+    - Added MDU polygon creation to property count tool
+    <p>0.3
     - Altered property count to do points within TopoArea polygon
     - Change to underground feeder cable builder
     - Added underground cables to drop cable builder

@@ -125,23 +125,22 @@ def updateCableCounts(iface):
                 count_lyr.addFeature(label)
 
     unique_cables = []
-    for cable in cable_lyr.getFeatures():
-        if cable[cable_fields['feed']] == "2":
-            is_unique = True
-            for cab in unique_cables:
-                if cab['geometry'].isGeosEqual(cable.geometry()):
-                    cable_use = cable[cable_fields['use']]
-                    cab['counts'][cable_use] += 1
-                    is_unique = False
-                    break
-
-            if is_unique:
-                counts = {'1': 0, '2': 0, '3': 0}
+    request = QgsFeatureRequest(QgsExpression('"{}" = \'2\' AND NOT "{}" = \'1\''.format(cable_fields['feed'], cable_fields['use'])))
+    for cable in cable_lyr.getFeatures(request):
+        is_unique = True
+        for cab in unique_cables:
+            if cab['geometry'].isGeosEqual(cable.geometry()):
                 cable_use = cable[cable_fields['use']]
-                counts[cable_use] += 1
-                unique_cables.append({'geometry': cable.geometry(), 'counts': counts})
+                cab['counts'][cable_use] += 1
+                is_unique = False
+                break
 
-    print(unique_cables)
+        if is_unique:
+            counts = {'1': 0, '2': 0, '3': 0}
+            cable_use = cable[cable_fields['use']]
+            counts[cable_use] += 1
+            unique_cables.append({'geometry': cable.geometry(), 'counts': counts})
+
     for cable in unique_cables:
         geom = cable['geometry']
         vertices = list(geom.vertices())
