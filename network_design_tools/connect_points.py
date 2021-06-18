@@ -53,7 +53,7 @@ def createNodeCable(iface, routingType, startPoint, startLayerName, startFid, en
     endIdSplit = endPt[endFields['id']].split('-')
     endId = endIdSplit[-1]
 
-    cableName = '{}/{}'.format(startId, '-'.join(endId))
+    cableName = '{}/{}'.format(startId, endId)
 
     cable_fields = layers['Cable']['fields']
 
