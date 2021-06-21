@@ -70,9 +70,6 @@ class SelectDCMapTool(QgsMapToolEmitPoint):
         request = QgsFeatureRequest(QgsRectangle(point.x()-1,point.y()-1, point.x()+1, point.y()+1))
         # Get ID of first feature with DP type
         for node in self.nodeLayer.getSelectedFeatures(request):
-            #print(node['Use'])
-            #any node will do
-            #if node['Use'] == 'Carrier' or node['Use'] == 'PMCE' or node['Use'] == 'PMSN':
             self.nodeSelected = True
             self.nodeId = node.id()
             self.nodeFeat = node
@@ -120,12 +117,15 @@ class ConnectNodesMapTool(QgsMapToolEmitPoint):
         self.iface = iface
         self.canvas = canvas
         self.layerParams = common.prerequisites['layers']
-        self.layerNames = common.prerequisites['settings']['connectNodeLayers']
+        self.layerNames = common.prerequisites['settings']['snapLayers']['connectNodes']
         self.layers = {}
         self.startPtSelected = False
         self.startLayerName = None
         self.startFid = None
         self.startPt = None
+        self.snapper = self.canvas.snappingUtils()
+        self.snap_indicator = QgsSnapIndicator(self.canvas)
+        self.snap_configured = False
 
     def deactivate(self):
         self.reset()
@@ -137,63 +137,45 @@ class ConnectNodesMapTool(QgsMapToolEmitPoint):
         self.startFid = None
         self.startPt = None
 
+    def canvasMoveEvent(self, event):
+        # Enable snapping to snap_layers only
+        if not self.snap_configured and len(self.layerNames) > 0:
+            self.snap_configured = common.set_snap_layers(self.layerNames, [QgsSnappingConfig.SnappingType.Vertex], 12, QgsTolerance.UnitType.Pixels)
+            if not self.snap_configured:
+                self.iface.messageBar().pushCritical('Snap layer(s) unavailable', 'Could not configure the specified snapping layers: {}'.format(', '.join(self.layerNames)))
+                self.deactivate()
+        snapped_point = self.snapper.snapToMap(event.mapPoint())
+        self.snap_indicator.setMatch(snapped_point)
+
     def canvasReleaseEvent(self, event):
         if event.button() == Qt.LeftButton:
             ### Generate Cable ###
             # Get the click and emit the point in source crs
-            if not self.startPtSelected:
-                if len(self.layers) == 0:
-                    self.initialiseLayers()
+            if self.snap_configured:
+                snapped_point = self.snapper.snapToMap(event.mapPoint())
+                if snapped_point.isValid():
+                    if not self.startPtSelected:
+                        self.startLayerName = snapped_point.layer().name()
+                        self.startFid = snapped_point.featureId()
+                        self.startPt = snapped_point.point()
+                        self.startPtSelected = True
+                    else:
+                        endLayerName = snapped_point.layer().name()
+                        endFid = snapped_point.featureId()
 
-                point = event.mapPoint()
-                request = QgsFeatureRequest(QgsRectangle(point.x()-1,point.y()-1, point.x()+1, point.y()+1))
-                for layerName, layer in self.layers.items():
-                    for feat in layer.getFeatures(request):
-                        self.startLayerName = layerName
-                        self.startFid = feat.id()
-                        break
+                        startPt = self.startPt
+                        startLayerName = self.startLayerName
+                        startFid = self.startFid
 
-                if self.startFid is not None:
-                    self.startPt = point
-                    self.startPtSelected = True
-                else:
-                    self.iface.messageBar().pushInfo('No Infrastructure', 'No Cabinet, Node or Joint at that location')
-            else:
-                point = event.mapPoint()
-                request = QgsFeatureRequest(QgsRectangle(point.x()-1,point.y()-1, point.x()+1, point.y()+1))
-
-                endFid = None
-                for layerName, layer in self.layers.items():
-                    for feat in layer.getFeatures(request):
-                        endLayerName = layerName
-                        endFid = feat.id()
-                        break
-
-                if endFid is not None:
-                    startPt = self.startPt
-                    startLayerName = self.startLayerName
-                    startFid = self.startFid
-                    self.startPt = point
-
-                    # Initialise start point for next cable
-                    self.startLayerName = endLayerName
-                    self.startFid = endFid
-                    self.pointsClicked.emit(startPt, startLayerName, startFid, point, endLayerName, endFid)
+                        # Initialise start point for next cable
+                        self.startPt = snapped_point.point()
+                        self.startLayerName = endLayerName
+                        self.startFid = endFid
+                        self.pointsClicked.emit(startPt, startLayerName, startFid, snapped_point.point(), endLayerName, endFid)
                 else:
                     self.iface.messageBar().pushInfo('No Infrastructure', 'No Cabinet, Node or Joint at that location')
         elif event.button() == Qt.RightButton:
             self.reset()
-
-    def initialiseLayers(self):
-        for layerName in self.layerNames:
-            if not layerName in self.layers:
-                layer = common.getLayerByName(self.iface, QgsProject.instance(), self.layerParams[layerName]['name'], False)
-                if layer is not None:
-                    self.layers[layerName] = layer
-
-        if len(self.layers) == 0:
-            self.iface.messageBar().pushInfo('Layers not open', 'None of the Cabinet, Node or Joint layers are open.')
-            self.deactivate()
 
     def isZoomTool(self):
         return False
@@ -214,7 +196,7 @@ class UGDropMapTool(QgsMapToolEmitPoint):
         self.canvas = canvas
         self.snapper = self.canvas.snappingUtils()
         self.snap_indicator = QgsSnapIndicator(self.canvas)
-        self.snap_layers = common.prerequisites['settings']['ugDropSnapLayers']
+        self.snap_layers = common.prerequisites['settings']['snapLayers']['ugDrop']
         self.snap_configured = False
 
     def deactivate(self):

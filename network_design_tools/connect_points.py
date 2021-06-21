@@ -30,24 +30,24 @@ def createNodeCable(iface, routingType, startPoint, startLayerName, startFid, en
     if cable_lyr is None:
         return
 
-    start_lyr = common.getLayerByName(iface, QgsProject.instance(), layers[startLayerName]['name'])
+    start_lyr = common.getLayerByName(iface, QgsProject.instance(), startLayerName)
     if start_lyr is None:
         return
     for feat in start_lyr.getFeatures(QgsFeatureRequest(startFid)):
         startPt = feat
 
-    end_lyr = common.getLayerByName(iface, QgsProject.instance(), layers[endLayerName]['name'])
+    end_lyr = common.getLayerByName(iface, QgsProject.instance(), endLayerName)
     if end_lyr is None:
         return
     for feat in end_lyr.getFeatures(QgsFeatureRequest(endFid)):
         endPt = feat
 
     # Get fields for the relevant layer
-    for layer in layers:
-        if layer == startLayerName:
-            startFields = layers[layer]['fields']
-        if layer == endLayerName:
-            endFields = layers[layer]['fields']
+    for params in layers.values():
+        if params['name'] == startLayerName:
+            startFields = params['fields']
+        if params['name'] == endLayerName:
+            endFields = params['fields']
 
     startId = startPt[startFields['id']]
     endIdSplit = endPt[endFields['id']].split('-')
@@ -192,8 +192,21 @@ class DropCableBuilder(QObject):
         if reply == QMessageBox.No:
             return
 
+
         if bdry_type in ('3', '5'): # PMSN/PMCE
-            self.create_oh_drop_cables()
+            msg_box = QMessageBox(QMessageBox.Question, 'Set Drop Cable Type', \
+                              "How will these drop cables be installed?", parent = self.iface.mainWindow())
+            aerial_btn = msg_box.addButton('Aerial', QMessageBox.YesRole)
+            msg_box.addButton('Underground', QMessageBox.NoRole)
+            msg_box.setDefaultButton(aerial_btn)
+            msg_box.setEscapeButton(aerial_btn)
+
+            reply = msg_box.exec_()
+            if reply == 0:
+                self.create_oh_drop_cables()
+            elif reply == 1:
+                self.create_ug_drop_cables()
+
         else: # UGSN/UGCE
             self.create_ug_drop_cables()
 
