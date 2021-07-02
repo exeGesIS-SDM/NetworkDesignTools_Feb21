@@ -154,7 +154,7 @@ class DropCableBuilder(QObject):
 
         self.is_valid = True
 
-    def create_drop_cables(self, node_id, bdry_id):
+    def create_drop_cables(self, node_id, bdry_id, selected_only):
         if not self.is_valid:
             return
 
@@ -172,7 +172,11 @@ class DropCableBuilder(QObject):
         # Get the intersecting properties
         bdry_sel_lyr = QgsProcessingFeatureSourceDefinition(self.bdry_lyr.source(), selectedFeaturesOnly = True)
         try:
-            processing.run("qgis:selectbylocation", {'INPUT':self.cp_lyr, 'INTERSECT':bdry_sel_lyr, 'METHOD':0, 'PREDICATE':[6]}) # 6 = Within
+            if selected_only:
+                # Ensure selected properties are within the SN boundary
+                processing.run("qgis:selectbylocation", {'INPUT':self.cp_lyr, 'INTERSECT':bdry_sel_lyr, 'METHOD':2, 'PREDICATE':[6]}) # 6 = Within
+            else:
+                processing.run("qgis:selectbylocation", {'INPUT':self.cp_lyr, 'INTERSECT':bdry_sel_lyr, 'METHOD':0, 'PREDICATE':[6]}) # 6 = Within
         except QgsProcessingException as e:
             QMessageBox.critical(self.iface.mainWindow(),'Selection Failure', \
                                 'Failed to select Customer Premises. Please check geometries in Boundaries layer are valid.\nQGIS error: {}'.format(e), QMessageBox.Ok)
@@ -187,13 +191,19 @@ class DropCableBuilder(QObject):
                 processing.run("qgis:selectbylocation", { 'INPUT' : self.cp_lyr, 'INTERSECT' : bdry_sel_lyr, 'METHOD' : 3, 'PREDICATE' : [6] }) # 3 = Remove from selection
         self.bdry_lyr.removeSelection()
 
+        if self.cp_lyr.selectedFeatureCount() == 0:
+            if selected_only:
+                QMessageBox.critical(self.iface.mainWindow(),'No Premises', 'None of the selected premises are within the SN boundary.', QMessageBox.Ok)
+            else:
+                QMessageBox.critical(self.iface.mainWindow(),'No Premises', 'There are no premises are within the SN boundary.', QMessageBox.Ok)
+            return
+
         message = '%s properties have been found within the SN area. Do you want to draw cables?' % (self.cp_lyr.selectedFeatureCount())
         reply = QMessageBox.question(self.iface.mainWindow(), 'Create Cables', message, QMessageBox.Yes, QMessageBox.No)
         if reply == QMessageBox.No:
             return
 
-
-        if bdry_type in ('3', '5'): # PMSN/PMCE
+        if selected_only:
             msg_box = QMessageBox(QMessageBox.Question, 'Set Drop Cable Type', \
                               "How will these drop cables be installed?", parent = self.iface.mainWindow())
             aerial_btn = msg_box.addButton('Aerial', QMessageBox.YesRole)
@@ -206,9 +216,11 @@ class DropCableBuilder(QObject):
                 self.create_oh_drop_cables()
             elif reply == 1:
                 self.create_ug_drop_cables()
-
-        else: # UGSN/UGCE
-            self.create_ug_drop_cables()
+        else:
+            if bdry_type in ('3', '5'): # PMSN/PMCE
+                self.create_oh_drop_cables()
+            else: # UGSN/UGCE
+                self.create_ug_drop_cables()
 
     def create_oh_drop_cables(self):
         self.cable_lyr.startEditing()

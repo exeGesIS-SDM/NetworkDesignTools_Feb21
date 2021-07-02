@@ -196,6 +196,9 @@ class NetworkDesignTools:
                     action)
             elif location == 'CableTool':
                 self.cableToolButton.menu().addAction(action)
+            elif location == 'DropTool':
+                self.dropToolButton.menu().addAction(action)
+
 
         self.actions.append(action)
 
@@ -254,14 +257,27 @@ class NetworkDesignTools:
             callback=partial(self.selectNodes, 'UG'),
             parent=self.iface.mainWindow())
 
+        self.dropToolButton = QToolButton()
+        self.dropToolButton.setMenu(QMenu())
+        self.dropToolButton.setPopupMode(QToolButton.MenuButtonPopup)
+        self.actions.append(self.toolbar.addWidget(self.dropToolButton))
+
         self.linkDCBtn = self.add_action(
             os.path.join(icons_folder,'node_add.png'),
             text=self.tr(u'Drop cable builder'),
-            add_to_menu=False,
-            location='Custom',
-            callback=self.linkDC,
+            add_to_toolbar=False,
+            location='DropTool',
+            callback=partial(self.linkDC, False),
             parent=self.iface.mainWindow())
-        self.linkDCBtn.setCheckable(True)
+        self.dropToolButton.setDefaultAction(self.linkDCBtn)
+
+        self.linkSelDCBtn = self.add_action(
+            os.path.join(icons_folder,'selected_node_add.png'),
+            text=self.tr(u'Drop cable builder (Selected premises)'),
+            add_to_toolbar=False,
+            location='DropTool',
+            callback=partial(self.linkDC, True),
+            parent=self.iface.mainWindow())
 
         self.add_action(
             os.path.join(icons_folder,'cable_count.png'),
@@ -314,8 +330,6 @@ class NetworkDesignTools:
             parent=self.iface.mainWindow())
         sld.setEnabled(self.enableSLD)
 
-        #self.linkDCPolyTool.setAction(dropCableBtn)
-
         # Connect the handler for the linkDCTool click event
         self.linkDCTool.dcSelected.connect(self.selectDCObject)
         self.linkDCTool.deactivated.connect(self.resetSelectDCTool)
@@ -367,11 +381,12 @@ class NetworkDesignTools:
             self.cableBuilder.check_layers()
 
         if self.cableBuilder.is_valid:
-            self.cableBuilder.create_drop_cables(nodeId, bdryId)
+            self.cableBuilder.create_drop_cables(nodeId, bdryId, self.selected_only)
 
     def finishedDCObject(self):
-        self.linkDCBtn.setChecked(True)
-        self.linkDC()
+        if not self.selected_only:
+            self.dropToolButton.setDown(True)
+            self.linkDC(False)
 
     def UpdatePremisesAttributes(self):
         """
@@ -832,12 +847,33 @@ class NetworkDesignTools:
 
 # Map Tool Event Handlers
 
-    def linkDC(self):
+    def linkDC(self, selected_only):
+        self.selected_only = selected_only
+        if selected_only:
+            if self.dropToolButton.defaultAction().text() != self.linkSelDCBtn.text():
+                self.dropToolButton.setDefaultAction(self.linkSelDCBtn)
+
+            # Check there are customer premises selected
+            cpLyr = common.getLayerByName(self.iface, QgsProject.instance(), common.prerequisites['layers']['Premises']['name'], True)
+            if cpLyr is None:
+                return
+
+            if cpLyr.selectedFeatureCount() == 0:
+                QMessageBox.critical(self.iface.mainWindow(),'No Premises Selected', \
+                                'Please select some customer premises within the relevant SN boundary and try again.', QMessageBox.Ok)
+                return
+        else:
+            if self.dropToolButton.defaultAction().text() != self.linkDCBtn.text():
+                self.dropToolButton.setDefaultAction(self.linkDCBtn)
+        if not self.dropToolButton.isDown():
+            self.dropToolButton.setDown(True)
+
         if not self.linkDCTool.isActive():
             self.iface.mapCanvas().setMapTool(self.linkDCTool)
 
     def resetSelectDCTool(self):
-        self.linkDCBtn.setChecked(False)
+        self.selected_only = False
+        self.dropToolButton.setDown(False)
 
     def generateCable(self, startPoint, startLayerName, startFid, endPoint, endLayerName, endFid):
         createNodeCable(self.iface, self.routingType, startPoint, startLayerName, startFid, endPoint, endLayerName, endFid)
