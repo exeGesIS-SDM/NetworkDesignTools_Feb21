@@ -6,7 +6,7 @@
 name=Network Design Tools
 qgisMinimumVersion=3.10
 description=Network Design Tools
-version=0.4.1
+version=0.4.2
 author=ESDM
 email=clairel@esdm.co.uk
 
@@ -20,11 +20,19 @@ repository=http://repo
 
 hasProcessingProvider=no
 # Uncomment the following line and add your changelog:
-# changelog=0.4
-    - Altered labelling on cable builder
-    - Altered cable name interpretation on SLD export
-    - Added cable count layer tool
-    - Added MDU polygon creation to property count tool
+# changelog=0.4.2
+    - Added tool to calculate drop cables to selected properties
+    - Resolved issue with incorrect counts in cable count layer 
+    <p>0.4.1
+    - Adding snapping to nodes for cable builder tool
+    - Removed aerial access from cable count tool
+    - Corrected name for second node in cable builder
+    <p>0.4
+    - MDU polygons automatically created by property count tool
+    - Cable count tool
+    - Modifying cable names in cable builder and SLD tool
+    - Modification to node attribute update tool
+    - Modification to underground drop cable builder
     <p>0.3
     - Altered property count to do points within TopoArea polygon
     - Change to underground feeder cable builder
